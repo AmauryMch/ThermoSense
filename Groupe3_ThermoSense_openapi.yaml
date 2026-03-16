@@ -1,0 +1,568 @@
+openapi: "3.0.3"
+
+info:
+  title: ThermoSense API
+  version: "0.1.0"
+  description: |
+    API de gestion de la plateforme ThermoSense —
+    supervision de capteurs et pilotage d'actionneurs pour le confort thermique des bâtiments.
+  contact:
+    name: "Support ThermoSense"
+    email: "coucou@test.com"
+
+servers:
+  - url: "https://api.thermosense.com/v1"
+    description: "Serveur de production"
+  - url: "https://staging-api.thermosense.com/v1"
+    description: "Serveur de staging pour tests"
+tags:
+  - name: "Buildings"
+    description: "Opérations liées à la gestion des bâtiments."
+  - name: "Areas"
+    description: "Opérations liées à la gestion des zones dans les bâtiments."
+  - name: "Sensors"
+    description: "Opérations liées à la gestion des capteurs."
+  - name: "Users"
+    description: "Opérations liées à la gestion des utilisateurs."
+  - name: "Measures"
+    description: "Opérations liées à la gestion des mesures de capteurs."
+  - name: "Actuators"
+    description: "Opérations liées à la gestion des actionneurs."
+  - name: "AlertThreshold"
+    description: "Opérations liées à la gestion des seuils d'alerte."
+# =============================================================================
+# PATHS
+# =============================================================================
+
+paths:
+  # ---------------------------------------------------------------------------
+  # Buildings
+  # ---------------------------------------------------------------------------
+
+  /buildings:
+    get:
+      tags: [Buildings]
+      operationId: listBuildings
+      summary: Lister les buildings
+      description: |
+        Retourne une liste de buildings lier à l'utilisateurr connecter
+      responses:
+        "200":
+          description : Liste des buildings lier a l'utilisate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Buildings"
+        "400":
+          description: |
+            Paramètres de recherche invalides (latitude/longitude hors bornes,
+            radius négatif, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      tags: [Buildings]
+      operationId: postBuildings
+      summary: Créer un building
+      description: |
+        Retourne un building précis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                schema:
+                  $ref: "#/components/schemas/Buildings"
+      responses:
+        "200":
+          description: Building créer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Buildings"
+        "400":
+          description: Une erreur lors de la création est survenu. Vérifier le body 
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+                          
+  /buildings/{buildingsId}:
+    get:
+      tags: [Buildings]
+      operationId: getBuildings
+      summary: affiche un building
+      description: |
+        Retourne un building précis
+      parameters:
+        - $ref: "#/components/parameters/buildingsId"
+      responses:
+        "200":
+          description: Building trouver
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Buildings"
+        "404":
+          description: Building inexistant — l'identifiant ne correspond à aucun building connu
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Buildings]
+      operationId: deleteBuildings
+      summary: Supprimer un building
+      description: |
+        Supprimer un building qui leur appartient
+      parameters:
+        - $ref: "#/components/parameters/buildingsId"
+      responses:
+        "204":
+          description: Supprimer un buildings qui leur appartient
+        "400":
+          description: Impossible de supprimer ce buildings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Building inexistant — l'identifiant ne correspond à aucun building connu
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+            
+        
+
+
+
+  /areas/{areaId}:
+    get:
+      tags: [Areas]
+      operationId: getArea
+      summary: Détails d'une zone 
+      description: |
+        Retourne les informations complètes d'une zone : le nom 
+        de la zonebuilding et la liste des capteurs.
+      parameters:
+        - $ref: "#/components/parameters/areaId"
+      responses:
+        "200":
+          description: Zone trouvé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Areas"
+        "404":
+          description: Zone inexistant - l'identifiant ne correspond à aucune zone connu
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /areas/{areaId}/sensors:
+    get:
+      tags: [Areas]
+      operationId: getAreaSensors
+      summary: Détails d'une zone 
+      description: |
+        Retourne tous les capteurs d'une zone avec le type du capteur
+        et leur status (active, inactive et en maintenanceena).  
+      parameters:
+        - $ref: "#/components/parameters/areaId"
+        - name: type
+          in: query
+          required: false
+          description: Filter par type de capteur
+          schema:
+            type: string
+            enum: ["temperature", "humidity", "both"]
+        - name: status
+          in: query
+          required: false
+          description: Filter par statuq du capteur
+          schema:
+            type: string
+            enum: [active, inactive, maintenance]
+      responses:
+        "200":
+          description: Liste des places du parking
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Sensors"
+        "404":
+          description: Zone inexistant - l'identifiant ne correspond à aucune zone connu
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /areas:
+    post:
+      tags: [Areas]
+      operationId: createArea
+      summary: Créer une zone dans un bâtiment.
+      description: |
+        Créer une zone dans un bâtiment spécifique. La zone doit être associée à un 
+        bâtiment existant.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [buildingId, name]
+              properties:
+                building:
+                  type: string
+                  description: Identifiant du bâtiment
+                name:
+                  type: string
+                  description: Nom de la zone
+      responses:
+        "201":
+          description: Création de la zone avec succès
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Areas"
+        "400":
+          description: Payload invalide (buildingId et/ou name manquant)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        
+  /sensors/{sensorId}:
+    get:
+      tags: [Sensors]
+      operationId: getSensor
+      summary: Obtenir le détail d'un capteur
+      description: |
+        Retourne les informations détaillées d'un capteur spécifique,
+        incluant son type et son statut opérationnel.
+        Utilisé par l'application mobile pour superviser un capteur précis.
+      parameters:
+        - name: sensorId
+          in: path
+          required: true
+          description: Identifiant unique du capteur.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Détail du capteur.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sensors"
+        "404":
+          description: Capteur introuvable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /sensors/{sensorId}/measures:
+    get:
+      tags: [Measures]
+      operationId: listMeasurements
+      summary: Lister les mesures d'un capteur.
+      description: |
+            Retourne les mesures associées à un capteur donné.
+            Les résultats sont paginés pour limiter le volume de données transférées.
+      parameters:
+        - name: sensorId
+          in : path
+          required: true
+          description: Identifiant du capteur.
+          schema: 
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Nombre maximal de mesures retournées.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 499
+            default: 99
+        - name: offset
+          in: query
+          required: false
+          description: Position de départ pour la pagination.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: Liste paginnée de mesures.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Measures"
+        "404":
+          description: Capteur introuvable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /zones/{zoneId}/alert-thresholds:
+    get:
+      tags: [AlertThreshold]
+      operationId: listAlertThresholds
+      summary: Lister les seuils d'alerte d'une zone
+      description: |
+        Retourne les règles d'alerte configurées pour une zone donnée.
+      parameters:
+        - name: zoneId
+          in: path
+          required: true
+          description: Identifiant unique de la zone.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Liste des seuils configurés.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AlertThreshold"
+        "404":
+          description: Zone introuvable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      tags: [AlertThreshold]
+      operationId: createAlertThreshold
+      summary: Créer un seuil d'alerte
+      description: |
+        Configure une nouvelle règle d'alerte pour une zone.
+        La règle déclenche une alerte si la condition est remplie pendant une durée donnée.
+      parameters:
+        - name: zoneId
+          in: path
+          required: true
+          description: Identifiant unique de la zone.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlertThreshold"
+      responses:
+        "201":
+          description: Seuil d'alerte créé.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertThreshold"
+        "404":
+          description: Zone introuvable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  
+components:           
+  parameters:
+    areaId:
+      name: areaId
+      in: path
+      required: true
+      description: "Identifiant unique de la zone."
+      schema:
+        type: string
+        format: uuid
+    buildingsId:
+      name: buildingsId
+      in: path
+      required: true
+      description: "Identifiant unique du bâtiment."
+      schema:
+        type: string
+        format: uuid
+    
+  schemas:
+    Buildings:
+      type: object
+      description: "Représente un bâtiment dans la plateforme ThermoSense."
+      required:
+        - id
+        - name
+        - location
+        - owner
+        - areas
+      properties:
+        id:
+          type: string
+          description: "Identifiant unique du bâtiment."
+        name:
+          type: string
+          description: "Nom du bâtiment."
+        location:
+          type: string
+          description: "Emplacement du bâtiment."
+        areas:
+          type: array
+          description: "Liste des zones présentes dans le bâtiment."
+          items:
+            $ref: "#/components/schemas/Areas"
+    Areas:
+      type: object
+      description: "Représente une zone dans un bâtiment."
+      required:
+        - id
+        - name
+        - buildingId
+        - sensors
+      properties:
+        id:
+          type: string
+          description: "Identifiant unique de la zone."
+        name:
+          type: string
+          description: "Nom de la zone."
+        buildingId:
+          type: string
+          description: "Identifiant du bâtiment auquel la zone appartient."
+        sensors:
+          type: array
+          description: "Liste des capteurs présents dans la zone."
+          items:
+            $ref: "#/components/schemas/Sensors"
+    Sensors:
+      type: object
+      description: "Représente un capteur dans une zone."
+      required:  
+        - id
+        - type
+        - status
+        - areaId
+      properties:
+        id:
+          type: string
+          description: "Identifiant unique du capteur."
+        type:
+          type: string
+          description: "Type de capteur."
+        status:
+          type: string
+          description: "Statut du capteur (active, inactive, maintenance)."
+          enum: [active, inactive, maintenance]
+        areaId:
+          type: string
+          description: "Identifiant de la zone à laquelle le capteur appartient."
+    Actuators:
+      type: object
+      description: "Représente un actionneur dans une zone."
+      required:
+        - id
+        - type
+        - state
+        - areaId
+      properties:
+        id:
+          type: string
+          description: "Identifiant unique de l'actionneur."
+        type:
+          type: string
+          description: "Type d'actionneur."
+        state:
+          type: string
+          description: "État de l'actionneur (on, off, auto)."
+          enum: [on, off, auto]
+        areaId:
+          type: string
+          description: "Identifiant de la zone à laquelle l'actionneur appartient."
+    Measures:
+      type: object
+      description: "Représente une mesure prise par un capteur."
+      required:
+        - id
+        - sensorId
+        - timestamp
+        - value
+      properties:
+        id:
+          type: string
+          description: "Identifiant unique de la mesure."
+        sensorId:
+          type: string
+          description: "Identifiant du capteur qui a pris la mesure."
+        timestamp:
+          type: string
+          format: date-time
+          description: "Date et heure de la mesure."
+        value:
+          type: number
+          description: "Valeur de la mesure prise par le capteur."
+    AlertThreshold:
+      type: object
+      description: "Représente un seuil d'alerte pour un capteur."
+      required:
+        - id
+        - sensorId
+        - thresholdValue
+        - comparisonOperator
+      properties:
+        id:
+          type: string
+          description: "Identifiant unique du seuil d'alerte."
+        sensorId:
+          type: string
+          description: "Identifiant du capteur auquel le seuil d'alerte est associé."
+        thresholdValue:
+          type: number
+          description: "Valeur du seuil d'alerte."
+        comparisonOperator:
+          type: string
+          description: "Opérateur de comparaison pour le seuil d'alerte (greaterThan, lessThan, equalTo)."
+          enum: [greaterThan, lessThan, equalTo]
+    Error:
+      type: object
+      description: "Représente une erreur dans la plateforme ThermoSense."
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Code d'erreur machine-readable (ex "invalidParameter")
+        message:
+          type: string
+          description: Message d'erreur lisible pour le développeur
+        details:
+          type: array
+          description: Détails supplémentaires (erreurs de validation par champ)
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              reason:
+                type: string
