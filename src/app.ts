@@ -5,6 +5,7 @@ import sensorsRouter from './routes/sensors';
 import measurementsRouter from './routes/measurements';
 import actuatorsRouter from './routes/actuators';
 import authRouter from './routes/auth';
+import usersRouter from './routes/users';
 import { verifyJWT, jwtErrorHandler } from './middleware/auth';
 import { notFound, errorHandler } from './middleware/errorHandler';
 
@@ -24,6 +25,7 @@ app.use(verifyJWT);
 app.use(jwtErrorHandler);
 
 // Routes protégées
+app.use('/users', usersRouter);
 app.use('/buildings', buildingsRouter);
 app.use('/buildings/:buildingId/zones', zonesRouter);
 app.use('/buildings/:buildingId/zones/:zoneId/sensors', sensorsRouter);
