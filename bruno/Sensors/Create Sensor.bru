@@ -1,0 +1,18 @@
+meta {
+  name: Create Sensor
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/sensors
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "type": "both",
+    "label": "Capteur mixte test"
+  }
+}

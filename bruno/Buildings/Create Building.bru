@@ -1,0 +1,20 @@
+meta {
+  name: Create Building
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/buildings
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Nouveau Bâtiment",
+    "address": "42 rue des Tests, 69000 Lyon",
+    "latitude": 45.7640,
+    "longitude": 4.8357
+  }
+}

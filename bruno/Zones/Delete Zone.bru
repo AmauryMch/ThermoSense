@@ -1,0 +1,11 @@
+meta {
+  name: Delete Zone
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}
+  body: none
+  auth: none
+}

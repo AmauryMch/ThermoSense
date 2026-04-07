@@ -1,0 +1,19 @@
+meta {
+  name: Post Measurement (manual)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/sensors/{{sensorId}}/measurements
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "type": "temperature",
+    "value": 23.4,
+    "unit": "°C"
+  }
+}

@@ -1,0 +1,11 @@
+meta {
+  name: Delete Sensor
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/sensors/{{sensorId}}
+  body: none
+  auth: none
+}

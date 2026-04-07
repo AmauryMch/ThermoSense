@@ -1,0 +1,11 @@
+meta {
+  name: Get Sensor Offline (503)
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/sensors/{{sensorOfflineId}}
+  body: none
+  auth: none
+}

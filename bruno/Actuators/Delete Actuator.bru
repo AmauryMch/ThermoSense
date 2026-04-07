@@ -1,0 +1,11 @@
+meta {
+  name: Delete Actuator
+  type: http
+  seq: 7
+}
+
+delete {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/actuators/{{actuatorId}}
+  body: none
+  auth: none
+}

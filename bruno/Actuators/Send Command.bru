@@ -1,0 +1,17 @@
+meta {
+  name: Send Command
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/actuators/{{actuatorId}}/commands
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "action": "on"
+  }
+}

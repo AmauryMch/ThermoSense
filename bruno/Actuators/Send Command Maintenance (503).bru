@@ -1,0 +1,21 @@
+meta {
+  name: Send Command Maintenance (503)
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/z-002/actuators/{{actuatorMaintenanceId}}/commands
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "action": "on"
+  }
+}
+
+docs {
+  a-004 est en maintenance → doit retourner 503 device_unavailable
+}

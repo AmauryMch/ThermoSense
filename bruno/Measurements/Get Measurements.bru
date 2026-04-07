@@ -1,0 +1,11 @@
+meta {
+  name: Get Measurements
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/sensors/{{sensorId}}/measurements
+  body: none
+  auth: none
+}

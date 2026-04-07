@@ -1,0 +1,11 @@
+meta {
+  name: Get Actuator
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/actuators/{{actuatorId}}
+  body: none
+  auth: none
+}

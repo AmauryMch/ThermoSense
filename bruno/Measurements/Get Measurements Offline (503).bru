@@ -1,0 +1,11 @@
+meta {
+  name: Get Measurements Offline (503)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/sensors/{{sensorOfflineId}}/measurements
+  body: none
+  auth: none
+}

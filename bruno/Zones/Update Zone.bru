@@ -1,0 +1,17 @@
+meta {
+  name: Update Zone
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Zone A — Open Space (réaménagé)"
+  }
+}

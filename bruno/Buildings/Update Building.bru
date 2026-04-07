@@ -1,0 +1,17 @@
+meta {
+  name: Update Building
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/buildings/{{buildingId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Siège Social ThermoSense (rénové)"
+  }
+}

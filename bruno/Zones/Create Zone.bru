@@ -1,0 +1,17 @@
+meta {
+  name: Create Zone
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Zone D — Cafétéria"
+  }
+}

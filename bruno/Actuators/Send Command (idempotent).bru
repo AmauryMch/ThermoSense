@@ -1,0 +1,21 @@
+meta {
+  name: Send Command (idempotent)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/actuators/{{actuatorId}}/commands
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "action": "auto"
+  }
+}
+
+docs {
+  Envoyer 2 fois de suite → le 2e retourne status: "no_change" (idempotence)
+}

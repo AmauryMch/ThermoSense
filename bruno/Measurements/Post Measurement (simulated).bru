@@ -1,0 +1,15 @@
+meta {
+  name: Post Measurement (simulated)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/sensors/{{sensorId}}/measurements
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}

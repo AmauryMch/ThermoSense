@@ -1,0 +1,11 @@
+meta {
+  name: Get Sensor
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/sensors/{{sensorId}}
+  body: none
+  auth: none
+}
