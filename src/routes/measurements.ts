@@ -1,114 +1,78 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { store } from '../data/store';
-import { Measurement, MeasurementType } from '../types';
+import { Zone, Sensor, Measurement } from '../db/models';
 import { generateTemperature, generateHumidity } from '../simulation/sensors';
+import { ISensor } from '../db/models';
 
 const router = Router({ mergeParams: true });
 
 interface SensorParams { buildingId: string; zoneId: string; sensorId: string }
 
-const VALID_TYPES: MeasurementType[] = ['temperature', 'humidity'];
+const VALID_TYPES = ['temperature', 'humidity'];
+
+type ResolveError = { ok: false; status: number; message: string };
+type ResolveOk    = { ok: true; sensor: NonNullable<Awaited<ReturnType<typeof Sensor.findOne>>> };
+
+async function resolveSensor(buildingId: string, zoneId: string, sensorId: string): Promise<ResolveError | ResolveOk> {
+  const zone = await Zone.findOne({ _id: zoneId, buildingId });
+  if (!zone) return { ok: false, status: 404, message: 'Zone introuvable' };
+  const sensor = await Sensor.findOne({ _id: sensorId, zoneId });
+  if (!sensor) return { ok: false, status: 404, message: 'Capteur introuvable' };
+  return { ok: true, sensor };
+}
 
 // GET /buildings/:buildingId/zones/:zoneId/sensors/:sensorId/measurements
-router.get('/', (req: Request<SensorParams>, res: Response) => {
+router.get('/', async (req: Request<SensorParams>, res: Response) => {
   const { buildingId, zoneId, sensorId } = req.params;
+  const result = await resolveSensor(buildingId, zoneId, sensorId);
+  if (!result.ok) { res.status(result.status).json({ error: 'not_found', message: result.message }); return; }
 
-  const zone = store.zones.get(zoneId);
-  if (!zone || zone.buildingId !== buildingId) {
-    res.status(404).json({ error: 'not_found', message: 'Zone introuvable' });
+  if (result.sensor.status === 'offline') {
+    res.status(503).json({ error: 'device_unavailable', message: `Le capteur ${sensorId} est hors ligne`, sensor_id: sensorId, retry_after: 60 });
     return;
   }
 
-  const sensor = store.sensors.get(sensorId);
-  if (!sensor || sensor.zoneId !== zoneId) {
-    res.status(404).json({ error: 'not_found', message: 'Capteur introuvable' });
-    return;
-  }
-
-  if (sensor.status === 'offline') {
-    res.status(503).json({
-      error: 'device_unavailable',
-      message: `Le capteur ${sensorId} est hors ligne`,
-      sensor_id: sensorId,
-      retry_after: 60,
-    });
-    return;
-  }
-
-  const measurements = store.measurements
-    .filter((m) => m.sensorId === sensorId)
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
+  const measurements = await Measurement.find({ sensorId }).sort({ timestamp: -1 });
   res.json(measurements);
 });
 
 // POST /buildings/:buildingId/zones/:zoneId/sensors/:sensorId/measurements
-router.post('/', (req: Request<SensorParams>, res: Response) => {
+router.post('/', async (req: Request<SensorParams>, res: Response) => {
   const { buildingId, zoneId, sensorId } = req.params;
+  const result = await resolveSensor(buildingId, zoneId, sensorId);
+  if (!result.ok) { res.status(result.status).json({ error: 'not_found', message: result.message }); return; }
 
-  const zone = store.zones.get(zoneId);
-  if (!zone || zone.buildingId !== buildingId) {
-    res.status(404).json({ error: 'not_found', message: 'Zone introuvable' });
-    return;
-  }
-
-  const sensor = store.sensors.get(sensorId);
-  if (!sensor || sensor.zoneId !== zoneId) {
-    res.status(404).json({ error: 'not_found', message: 'Capteur introuvable' });
-    return;
-  }
+  const { sensor } = result;
 
   if (sensor.status === 'offline' || sensor.status === 'maintenance') {
-    res.status(503).json({
-      error: 'device_unavailable',
-      message: `Le capteur ${sensorId} est en état ${sensor.status} — ingestion impossible`,
-      sensor_id: sensorId,
-      retry_after: 60,
-    });
+    res.status(503).json({ error: 'device_unavailable', message: `Le capteur ${sensorId} est en état ${sensor.status}`, sensor_id: sensorId, retry_after: 60 });
     return;
   }
 
   const { type, value, unit } = req.body;
 
-  let measType: MeasurementType;
+  let measType: 'temperature' | 'humidity';
   let measValue: number;
   let measUnit: string;
 
   if (value !== undefined && type) {
     if (!VALID_TYPES.includes(type)) {
-      res.status(400).json({
-        error: 'validation_error',
-        message: `Le type doit être parmi : ${VALID_TYPES.join(', ')}`,
-      });
-      return;
+      res.status(400).json({ error: 'validation_error', message: `type doit être parmi : ${VALID_TYPES.join(', ')}` }); return;
     }
     measType = type;
     measValue = Number(value);
     measUnit = unit ?? (type === 'temperature' ? '°C' : '%');
   } else {
-    // Simulation automatique si aucune valeur fournie
-    if (sensor.type === 'humidity') {
-      measType = 'humidity';
-      measValue = generateHumidity(sensor);
-      measUnit = '%';
+    // Simulation automatique
+    const sensorPlain = sensor.toObject() as ISensor;
+    if (sensorPlain.type === 'humidity') {
+      measType = 'humidity'; measValue = generateHumidity(sensorPlain); measUnit = '%';
     } else {
-      measType = 'temperature';
-      measValue = generateTemperature(sensor);
-      measUnit = '°C';
+      measType = 'temperature'; measValue = generateTemperature(sensorPlain); measUnit = '°C';
     }
   }
 
-  const measurement: Measurement = {
-    id: uuidv4(),
-    sensorId,
-    type: measType,
-    value: measValue,
-    unit: measUnit,
-    timestamp: new Date().toISOString(),
-  };
-
-  store.measurements.push(measurement);
+  const measurement = await Measurement.create({ _id: uuidv4(), sensorId, type: measType, value: measValue, unit: measUnit, timestamp: new Date().toISOString() });
   res.status(201).json(measurement);
 });
 
