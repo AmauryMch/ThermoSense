@@ -13,24 +13,29 @@ const app = express();
 
 app.use(express.json());
 
-// Routes publiques
-app.use('/auth', authRouter);
+// Middleware JWT — exclut explicitement les routes publiques
+app.use(
+  verifyJWT.unless({
+    path: [
+      { url: '/auth/login', methods: ['POST'] },
+      { url: '/health',     methods: ['GET']  },
+    ],
+  })
+);
+app.use(jwtErrorHandler);
+
+// Routes
+app.use('/auth',       authRouter);
+app.use('/users',      usersRouter);
+app.use('/buildings',  buildingsRouter);
+app.use('/buildings/:buildingId/zones',                                     zonesRouter);
+app.use('/buildings/:buildingId/zones/:zoneId/sensors',                     sensorsRouter);
+app.use('/buildings/:buildingId/zones/:zoneId/sensors/:sensorId/measurements', measurementsRouter);
+app.use('/buildings/:buildingId/zones/:zoneId/actuators',                   actuatorsRouter);
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-
-// Middleware JWT — protège tout ce qui suit
-app.use(verifyJWT);
-app.use(jwtErrorHandler);
-
-// Routes protégées
-app.use('/users', usersRouter);
-app.use('/buildings', buildingsRouter);
-app.use('/buildings/:buildingId/zones', zonesRouter);
-app.use('/buildings/:buildingId/zones/:zoneId/sensors', sensorsRouter);
-app.use('/buildings/:buildingId/zones/:zoneId/sensors/:sensorId/measurements', measurementsRouter);
-app.use('/buildings/:buildingId/zones/:zoneId/actuators', actuatorsRouter);
 
 app.use(notFound);
 app.use(errorHandler);
