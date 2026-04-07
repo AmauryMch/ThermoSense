@@ -7,5 +7,10 @@ meta {
 delete {
   url: {{baseUrl}}/buildings/{{buildingId}}
   body: none
-  auth: none
+  auth: bearer
+}
+
+
+auth:bearer {
+  token: {{token}}
 }

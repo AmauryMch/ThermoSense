@@ -7,9 +7,14 @@ meta {
 post {
   url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/sensors/{{sensorId}}/measurements
   body: json
-  auth: none
+  auth: bearer
 }
 
 body:json {
   {}
+}
+
+
+auth:bearer {
+  token: {{token}}
 }

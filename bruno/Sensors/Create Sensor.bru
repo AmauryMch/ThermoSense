@@ -7,7 +7,7 @@ meta {
 post {
   url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/sensors
   body: json
-  auth: none
+  auth: bearer
 }
 
 body:json {
@@ -15,4 +15,9 @@ body:json {
     "type": "both",
     "label": "Capteur mixte test"
   }
+}
+
+
+auth:bearer {
+  token: {{token}}
 }

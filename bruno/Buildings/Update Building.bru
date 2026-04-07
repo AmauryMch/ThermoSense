@@ -7,11 +7,16 @@ meta {
 patch {
   url: {{baseUrl}}/buildings/{{buildingId}}
   body: json
-  auth: none
+  auth: bearer
 }
 
 body:json {
   {
     "name": "Siège Social ThermoSense (rénové)"
   }
+}
+
+
+auth:bearer {
+  token: {{token}}
 }

@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { Building, Zone, Sensor, Measurement, Actuator, User } from '../db/models';
 
 function recentTimestamp(offsetMinutes: number): string {
@@ -106,12 +107,19 @@ export async function seedDatabase(): Promise<void> {
   await Measurement.insertMany(measurements);
 
   // ── Users ──────────────────────────────────────────────────────────────────
+  const [h1, h2, h3, h4, h5] = await Promise.all([
+    bcrypt.hash('Admin1234!',    10),
+    bcrypt.hash('Operator1234!', 10),
+    bcrypt.hash('Operator1234!', 10),
+    bcrypt.hash('Device1234!',   10),
+    bcrypt.hash('Device1234!',   10),
+  ]);
   await User.insertMany([
-    { _id: 'u-001', username: 'admin',               role: 'admin' },
-    { _id: 'u-002', username: 'operator_zone_a',     role: 'operator', zoneId: 'z-001' },
-    { _id: 'u-003', username: 'operator_zone_b',     role: 'operator', zoneId: 'z-002' },
-    { _id: 'u-004', username: 'device_sensor_01',    role: 'device' },
-    { _id: 'u-005', username: 'device_actuator_01',  role: 'device' },
+    { _id: 'u-001', username: 'admin',               passwordHash: h1, role: 'admin' },
+    { _id: 'u-002', username: 'operator_zone_a',     passwordHash: h2, role: 'operator', zoneId: 'z-001' },
+    { _id: 'u-003', username: 'operator_zone_b',     passwordHash: h3, role: 'operator', zoneId: 'z-002' },
+    { _id: 'u-004', username: 'device_sensor_01',    passwordHash: h4, role: 'device' },
+    { _id: 'u-005', username: 'device_actuator_01',  passwordHash: h5, role: 'device' },
   ]);
 
   console.log(
@@ -119,4 +127,25 @@ export async function seedDatabase(): Promise<void> {
     `${await Sensor.countDocuments()} capteurs, ${await Actuator.countDocuments()} actionneurs, ` +
     `${await Measurement.countDocuments()} mesures, ${await User.countDocuments()} utilisateurs`
   );
+}
+
+// Upsert les mots de passe pour les utilisateurs qui n'en ont pas encore
+// (utile quand la BD est déjà peuplée sans passwordHash)
+export async function ensureUserPasswords(): Promise<void> {
+  const defaults: { username: string; password: string }[] = [
+    { username: 'admin',              password: 'Admin1234!' },
+    { username: 'operator_zone_a',    password: 'Operator1234!' },
+    { username: 'operator_zone_b',    password: 'Operator1234!' },
+    { username: 'device_sensor_01',   password: 'Device1234!' },
+    { username: 'device_actuator_01', password: 'Device1234!' },
+  ];
+
+  for (const { username, password } of defaults) {
+    const user = await User.findOne({ username });
+    if (user && !user.passwordHash) {
+      user.passwordHash = await bcrypt.hash(password, 10);
+      await user.save();
+      console.log(`[seed] mot de passe initialisé pour ${username}`);
+    }
+  }
 }

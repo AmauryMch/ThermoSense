@@ -7,5 +7,10 @@ meta {
 get {
   url: {{baseUrl}}/buildings
   body: none
-  auth: none
+  auth: bearer
+}
+
+
+auth:bearer {
+  token: {{token}}
 }

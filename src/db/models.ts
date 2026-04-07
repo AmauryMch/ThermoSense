@@ -89,15 +89,17 @@ const ActuatorSchema = new Schema<IActuator>({
 export interface IUser extends Document<string> {
   _id: string;
   username: string;
+  passwordHash?: string;
   role: 'admin' | 'operator' | 'device';
   zoneId?: string;
 }
 
 const UserSchema = new Schema<IUser>({
-  _id:      { type: String, required: true },
-  username: { type: String, required: true, unique: true },
-  role:     { type: String, enum: ['admin', 'operator', 'device'], required: true },
-  zoneId:   { type: String, ref: 'Zone' },
+  _id:          { type: String, required: true },
+  username:     { type: String, required: true, unique: true },
+  passwordHash: { type: String },
+  role:         { type: String, enum: ['admin', 'operator', 'device'], required: true },
+  zoneId:       { type: String, ref: 'Zone' },
 });
 
 export const Building    = mongoose.model<IBuilding>('Building', BuildingSchema);

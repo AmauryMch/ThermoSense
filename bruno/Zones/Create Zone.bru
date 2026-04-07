@@ -7,11 +7,16 @@ meta {
 post {
   url: {{baseUrl}}/buildings/{{buildingId}}/zones
   body: json
-  auth: none
+  auth: bearer
 }
 
 body:json {
   {
     "name": "Zone D — Cafétéria"
   }
+}
+
+
+auth:bearer {
+  token: {{token}}
 }

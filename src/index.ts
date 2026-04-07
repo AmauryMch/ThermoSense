@@ -1,13 +1,14 @@
 import 'dotenv/config';
 import app from './app';
 import { connectDB } from './db/connection';
-import { seedDatabase } from './data/seed';
+import { seedDatabase, ensureUserPasswords } from './data/seed';
 
 const PORT = process.env.PORT ?? 3000;
 
 async function main() {
   await connectDB();
   await seedDatabase();
+  await ensureUserPasswords();
 
   app.listen(PORT, () => {
     console.log(`[server] ThermoSense API démarrée sur http://localhost:${PORT}`);

@@ -1,0 +1,25 @@
+meta {
+  name: Login (operator)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "operator_zone_a",
+    "password": "Operator1234!"
+  }
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.token) {
+    bru.setVar("token", res.body.token);
+    console.log("Token sauvegardé dans {{token}}");
+  }
+}
