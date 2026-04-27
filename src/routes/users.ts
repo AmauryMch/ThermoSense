@@ -2,11 +2,13 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../db/models';
+import { requireRole } from '../middleware/auth';
 
 const router = Router();
 
 // POST /users — créer un utilisateur
-router.post('/', async (req: Request, res: Response): Promise<void> => {
+// BFLA: admin uniquement
+router.post('/', requireRole('admin'), async (req: Request, res: Response): Promise<void> => {
   const { username, password, role, zoneId } = req.body;
 
   if (!username || !password || !role) {

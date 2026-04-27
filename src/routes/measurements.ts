@@ -3,10 +3,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { Zone, Sensor, Measurement } from '../db/models';
 import { generateTemperature, generateHumidity } from '../simulation/sensors';
 import { ISensor } from '../db/models';
+import { requireRole, requireZoneAccess } from '../middleware/auth';
 
 const router = Router({ mergeParams: true });
 
-interface SensorParams { buildingId: string; zoneId: string; sensorId: string }
+interface SensorP { buildingId: string; zoneId: string; sensorId: string }
 
 const VALID_TYPES = ['temperature', 'humidity'];
 
@@ -22,8 +23,9 @@ async function resolveSensor(buildingId: string, zoneId: string, sensorId: strin
 }
 
 // GET /buildings/:buildingId/zones/:zoneId/sensors/:sensorId/measurements
-router.get('/', async (req: Request<SensorParams>, res: Response) => {
-  const { buildingId, zoneId, sensorId } = req.params;
+// BFLA: admin + operator | BOLA: sa zone uniquement
+router.get('/', requireRole('admin', 'operator'), requireZoneAccess, async (req: Request, res: Response) => {
+  const { buildingId, zoneId, sensorId } = req.params as unknown as SensorP;
   const result = await resolveSensor(buildingId, zoneId, sensorId);
   if (!result.ok) { res.status(result.status).json({ error: 'not_found', message: result.message }); return; }
 
@@ -37,8 +39,9 @@ router.get('/', async (req: Request<SensorParams>, res: Response) => {
 });
 
 // POST /buildings/:buildingId/zones/:zoneId/sensors/:sensorId/measurements
-router.post('/', async (req: Request<SensorParams>, res: Response) => {
-  const { buildingId, zoneId, sensorId } = req.params;
+// BFLA: admin + device (opérateurs ne postent pas de mesures) | BOLA: sa zone
+router.post('/', requireRole('admin', 'device'), requireZoneAccess, async (req: Request, res: Response) => {
+  const { buildingId, zoneId, sensorId } = req.params as unknown as SensorP;
   const result = await resolveSensor(buildingId, zoneId, sensorId);
   if (!result.ok) { res.status(result.status).json({ error: 'not_found', message: result.message }); return; }
 
@@ -63,7 +66,6 @@ router.post('/', async (req: Request<SensorParams>, res: Response) => {
     measValue = Number(value);
     measUnit = unit ?? (type === 'temperature' ? '°C' : '%');
   } else {
-    // Simulation automatique
     const sensorPlain = sensor.toObject() as ISensor;
     if (sensorPlain.type === 'humidity') {
       measType = 'humidity'; measValue = generateHumidity(sensorPlain); measUnit = '%';

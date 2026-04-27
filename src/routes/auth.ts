@@ -41,6 +41,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     {
       role:  user.role,
       scope: scopeForRole(user.role),
+      ...(user.zoneId ? { zoneId: user.zoneId } : {}),
     },
     process.env.JWT_SECRET!,
     {

@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { Zone, Actuator } from '../db/models';
+import { requireRole, requireZoneAccess } from '../middleware/auth';
 
 const router = Router({ mergeParams: true });
 
-interface ZoneParams { buildingId: string; zoneId: string }
-interface ActuatorParams { buildingId: string; zoneId: string; actuatorId: string }
+interface ZoneP { buildingId: string; zoneId: string }
+interface ActuatorP { buildingId: string; zoneId: string; actuatorId: string }
 
 const VALID_TYPES = ['heating', 'cooling', 'ventilation'];
 const VALID_STATUSES = ['on', 'off', 'auto', 'maintenance'];
@@ -16,8 +17,9 @@ async function findZone(buildingId: string, zoneId: string) {
 }
 
 // GET /buildings/:buildingId/zones/:zoneId/actuators
-router.get('/', async (req: Request<ZoneParams>, res: Response) => {
-  const { buildingId, zoneId } = req.params;
+// BFLA: admin + operator | BOLA: sa zone uniquement
+router.get('/', requireRole('admin', 'operator'), requireZoneAccess, async (req: Request, res: Response) => {
+  const { buildingId, zoneId } = req.params as unknown as ZoneP;
   if (!(await findZone(buildingId, zoneId))) {
     res.status(404).json({ error: 'not_found', message: 'Zone introuvable' }); return;
   }
@@ -25,8 +27,9 @@ router.get('/', async (req: Request<ZoneParams>, res: Response) => {
 });
 
 // POST /buildings/:buildingId/zones/:zoneId/actuators
-router.post('/', async (req: Request<ZoneParams>, res: Response) => {
-  const { buildingId, zoneId } = req.params;
+// BFLA: admin + operator | BOLA: sa zone uniquement
+router.post('/', requireRole('admin', 'operator'), requireZoneAccess, async (req: Request, res: Response) => {
+  const { buildingId, zoneId } = req.params as unknown as ZoneP;
   if (!(await findZone(buildingId, zoneId))) {
     res.status(404).json({ error: 'not_found', message: 'Zone introuvable' }); return;
   }
@@ -39,8 +42,9 @@ router.post('/', async (req: Request<ZoneParams>, res: Response) => {
 });
 
 // GET /buildings/:buildingId/zones/:zoneId/actuators/:actuatorId
-router.get('/:actuatorId', async (req: Request<ActuatorParams>, res: Response) => {
-  const { buildingId, zoneId, actuatorId } = req.params;
+// BFLA: admin + operator | BOLA: sa zone uniquement
+router.get('/:actuatorId', requireRole('admin', 'operator'), requireZoneAccess, async (req: Request, res: Response) => {
+  const { buildingId, zoneId, actuatorId } = req.params as unknown as ActuatorP;
   if (!(await findZone(buildingId, zoneId))) {
     res.status(404).json({ error: 'not_found', message: 'Zone introuvable' }); return;
   }
@@ -50,8 +54,9 @@ router.get('/:actuatorId', async (req: Request<ActuatorParams>, res: Response) =
 });
 
 // POST /buildings/:buildingId/zones/:zoneId/actuators/:actuatorId/commands
-router.post('/:actuatorId/commands', async (req: Request<ActuatorParams>, res: Response) => {
-  const { buildingId, zoneId, actuatorId } = req.params;
+// BFLA: admin + operator | BOLA: sa zone uniquement
+router.post('/:actuatorId/commands', requireRole('admin', 'operator'), requireZoneAccess, async (req: Request, res: Response) => {
+  const { buildingId, zoneId, actuatorId } = req.params as unknown as ActuatorP;
   if (!(await findZone(buildingId, zoneId))) {
     res.status(404).json({ error: 'not_found', message: 'Zone introuvable' }); return;
   }
@@ -69,21 +74,19 @@ router.post('/:actuatorId/commands', async (req: Request<ActuatorParams>, res: R
   }
 
   const previousStatus = actuator.status;
-
-  // Idempotence
   if (previousStatus === action) {
     res.json({ command_id: uuidv4(), actuator_id: actuatorId, action, status: 'no_change', previous_state: previousStatus, current_state: action, executed_at: new Date().toISOString() });
     return;
   }
 
   await Actuator.findByIdAndUpdate(actuatorId, { status: action });
-
   res.json({ command_id: uuidv4(), actuator_id: actuatorId, action, status: 'executed', previous_state: previousStatus, current_state: action, executed_at: new Date().toISOString() });
 });
 
 // PATCH /buildings/:buildingId/zones/:zoneId/actuators/:actuatorId
-router.patch('/:actuatorId', async (req: Request<ActuatorParams>, res: Response) => {
-  const { buildingId, zoneId, actuatorId } = req.params;
+// BFLA: admin + operator | BOLA: sa zone uniquement
+router.patch('/:actuatorId', requireRole('admin', 'operator'), requireZoneAccess, async (req: Request, res: Response) => {
+  const { buildingId, zoneId, actuatorId } = req.params as unknown as ActuatorP;
   if (!(await findZone(buildingId, zoneId))) {
     res.status(404).json({ error: 'not_found', message: 'Zone introuvable' }); return;
   }
@@ -97,8 +100,9 @@ router.patch('/:actuatorId', async (req: Request<ActuatorParams>, res: Response)
 });
 
 // DELETE /buildings/:buildingId/zones/:zoneId/actuators/:actuatorId
-router.delete('/:actuatorId', async (req: Request<ActuatorParams>, res: Response) => {
-  const { buildingId, zoneId, actuatorId } = req.params;
+// BFLA: admin uniquement
+router.delete('/:actuatorId', requireRole('admin'), async (req: Request, res: Response) => {
+  const { buildingId, zoneId, actuatorId } = req.params as unknown as ActuatorP;
   if (!(await findZone(buildingId, zoneId))) {
     res.status(404).json({ error: 'not_found', message: 'Zone introuvable' }); return;
   }
