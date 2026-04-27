@@ -19,144 +19,182 @@ info:
     - Piloter les équipements en temps réel
 
     ## Authentification
-    Toutes les requêtes nécessitent un token Bearer dans le header
-    `Authorization`.
+    Toutes les requêtes (sauf `/health` et `POST /auth/login`) nécessitent un
+    token Bearer dans le header `Authorization`.
 
-    Les tokens sont obtenus via un flux OAuth2
-    (non décrit dans ce contrat).
+    Le token est obtenu via `POST /auth/login`.
 
   contact:
     name: Équipe ThermoSense
     email: api@thermosense.example.com
 
 servers:
+  - url: http://localhost:3000
+    description: Local
   - url: https://api.thermosense.example.com/v1
     description: Production
   - url: https://staging-api.thermosense.example.com/v1
     description: Staging
 
 tags:
+  - name: Health
+    description: État de l'API
+  - name: Auth
+    description: Authentification et gestion des utilisateurs
   - name: Buildings
-    description: Gestion des batiments et de leurs emplacements
+    description: Gestion des bâtiments
   - name: Zones
-    description: Gestion des zones et de leurs emplacements
+    description: Gestion des zones d'un bâtiment
   - name: Sensors
-    description: Gestions des capteurs
+    description: Gestion des capteurs
   - name: Measurements
-    description: Gestion des mesures des capteurs
+    description: Mesures collectées par les capteurs
   - name: Actuators
     description: Gestion des actionneurs et de leurs commandes
+
+# =============================================================================
+# SECURITY
+# =============================================================================
+
+security:
+  - bearerAuth: []
 
 # =============================================================================
 # PATHS
 # =============================================================================
 
 paths:
+
+  # ---------------------------------------------------------------------------
+  # Health
+  # ---------------------------------------------------------------------------
+
+  /health:
+    get:
+      tags: [Health]
+      operationId: healthCheck
+      summary: État de l'API
+      description: Retourne l'état de santé de l'API. Aucune authentification requise.
+      security: []
+      responses:
+        "200":
+          description: API opérationnelle
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  # ---------------------------------------------------------------------------
+  # Auth
+  # ---------------------------------------------------------------------------
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Connexion
+      description: Authentifie un utilisateur et retourne un token JWT.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authentification réussie
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Identifiants invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+
+  /users:
+    post:
+      tags: [Auth]
+      operationId: createUser
+      summary: Créer un utilisateur
+      description: Crée un nouvel utilisateur (admin uniquement).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: Utilisateur créé avec succès
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "403":
+          description: Action réservée aux administrateurs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+
   # ---------------------------------------------------------------------------
   # Buildings
   # ---------------------------------------------------------------------------
 
   /buildings:
+    get:
+      tags: [Buildings]
+      operationId: listBuildings
+      summary: Lister les bâtiments
+      description: Retourne la liste de tous les bâtiments.
+      responses:
+        "200":
+          description: Liste des bâtiments
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Building"
     post:
       tags: [Buildings]
-      operationId: createBuildings
+      operationId: createBuilding
       summary: Créer un bâtiment
-      description: |
-        Créer un batiment avec son nom, son adresse, et sa géolocalisation.
-      parameters:
-        - name: name 
-          in: query
-          required: true
-          description: Nom du bâtiment
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 100
-        - name: adresse
-          in: query
-          required: true
-          description: Adresse postale complète du bâtiment
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 200
-        - name: latitude
-          in: query
-          required: true
-          description: Latitude du point de recherche (WGS84)
-          schema:
-            type: number
-            format: double
-            minimum: -90
-            maximum: 90
-        - name: longitude
-          in: query
-          required: true
-          description: Longitude du point de recherche (WGS84)
-          schema:
-            type: number
-            format: double
-            minimum: -180
-            maximum: 180
+      description: Crée un bâtiment avec son nom, son adresse et sa géolocalisation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuildingRequest"
       responses:
         "201":
           description: Bâtiment créé avec succès
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Buildings"
+                $ref: "#/components/schemas/Building"
         "400":
-          description: |
-            Requête invalide — paramètres manquants ou invalides
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Errors"
-    get:
-      tags: [Buildings]
-      operationId: listBuildings
-      summary: Lister les bâtiments à proximité
-      description: |
-        Retourne la liste des bâtiments situés à proximité du point de recherche
-        spécifié, triés par distance croissante. Chaque bâtiment est résumé par
-        son nom, son adresse, sa géolocalisation, et le nombre de places libres.
-      parameters:
-        - name: latitude
-          in: query
-          required: true
-          description: Latitude du point de recherche (WGS84)
-          schema:
-            type: number
-            format: double
-            minimum: -90
-            maximum: 90
-        - name: longitude
-          in: query
-          required: true
-          description: Longitude du point de recherche (WGS84)
-          schema:
-            type: number
-            format: double
-            minimum: -180
-            maximum: 180
-        - name: radiusMeters
-          in: query
-          required: false
-          description: Rayon de recherche en mètres (défaut 1000m, max 10000m)
-          schema:
-            type: integer
-            minimum: 100
-            maximum: 10000
-      responses:
-        "200":
-          description: Liste des bâtiments trouvés à proximité du point de recherche
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Buildings"
-        "400":
-          description: |
-            Requête invalide — paramètres manquants ou invalides (ex : coordonnées hors limites)
+          description: Données invalides — champs manquants ou invalides
           content:
             application/json:
               schema:
@@ -165,10 +203,8 @@ paths:
   /buildings/{buildingId}:
     get:
       tags: [Buildings]
-      operationId: getBuildingDetails
+      operationId: getBuilding
       summary: Détails d'un bâtiment
-      description: |
-        Retourne les détails d'un bâtiment : nom, adresse, géolocalisation.
       parameters:
         - $ref: "#/components/parameters/buildingId"
       responses:
@@ -177,7 +213,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Buildings"
+                $ref: "#/components/schemas/Building"
         "404":
           description: Bâtiment inexistant
           content:
@@ -187,89 +223,52 @@ paths:
     patch:
       tags: [Buildings]
       operationId: updateBuilding
-      summary: Mettre à jour les détails d'un bâtiment
-      description: |
-        Met à jour les détails d'un bâtiment existant : nom, adresse, géolocalisation.
+      summary: Mettre à jour un bâtiment
       parameters:
         - $ref: "#/components/parameters/buildingId"
-        - name: name 
-          in: query
-          required: false
-          description: Nom du bâtiment
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 100
-        - name: adresse
-          in: query
-          required: false
-          description: Adresse postale complète du bâtiment
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 200
-        - name: latitude
-          in: query
-          required: false
-          description: Latitude du point de recherche (WGS84)
-          schema:
-            type: number
-            format: double
-            minimum: -90
-            maximum: 90
-        - name: longitude
-          in: query
-          required: false
-          description: Longitude du point de recherche (WGS84)
-          schema:
-            type: number
-            format: double
-            minimum: -180
-            maximum: 180
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuildingPatchRequest"
       responses:
         "200":
           description: Bâtiment mis à jour avec succès
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Buildings"
+                $ref: "#/components/schemas/Building"
         "400":
-          description: |
-            Requête invalide — paramètres invalides ou aucun champ à mettre à jour fourni
+          description: Données invalides
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Errors"
         "404":
-          description: Bâtiment inexistant — Aucun bâtiment trouvé avec l'identifiant spécifié
+          description: Bâtiment inexistant
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Errors"     
+                $ref: "#/components/schemas/Errors"
     delete:
       tags: [Buildings]
       operationId: deleteBuilding
       summary: Supprimer un bâtiment
       description: |
-        Supprime un bâtiment existant. Cette opération est irréversible et supprimera
-        également toutes les zones, capteurs, mesures et actionneurs associés à ce bâtiment.
+        Supprime un bâtiment. Opération irréversible — supprime également toutes
+        les zones, capteurs, mesures et actionneurs associés.
       parameters:
         - $ref: "#/components/parameters/buildingId"
       responses:
         "204":
           description: Bâtiment supprimé avec succès
-        "400":
-          description: Requête invalide — Le buildingId est mal formé
+        "404":
+          description: Bâtiment inexistant
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Errors"
-        "404":
-          description: Bâtiment inexistant — Aucun bâtiment trouvé avec l'identifiant spécifié
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Errors"   
 
   # ---------------------------------------------------------------------------
   # Zones
@@ -280,8 +279,6 @@ paths:
       tags: [Zones]
       operationId: listZones
       summary: Lister les zones d'un bâtiment
-      description: |
-        Retourne la liste des zones d'un bâtiment.
       parameters:
         - $ref: "#/components/parameters/buildingId"
       responses:
@@ -297,15 +294,9 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: "#/components/schemas/Zones"
-        "403":
-          description: Bâtiment inexistant
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Errors"
+                      $ref: "#/components/schemas/Zone"
         "404":
-          description: Zone inexistante
+          description: Bâtiment inexistant
           content:
             application/json:
               schema:
@@ -314,140 +305,116 @@ paths:
       tags: [Zones]
       operationId: createZone
       summary: Créer une zone dans un bâtiment
-      description: |
-        Créer une zone dans un bâtiment existant.
       parameters:
         - $ref: "#/components/parameters/buildingId"
-        - name: name
-          in: query
-          required: true
-          description: Nom de la zone
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 100
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ZoneRequest"
       responses:
         "201":
           description: Zone créée avec succès
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Zones"
+                $ref: "#/components/schemas/Zone"
         "400":
-          description: Requête invalide — Le buildingId est mal formé ou le nom de la zone est manquant ou invalide
+          description: Données invalides
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Errors"
         "404":
-          description: Bâtiment inexistant — Aucun bâtiment trouvé avec l'identifiant spécifié
+          description: Bâtiment inexistant
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Errors"      
-                
+                $ref: "#/components/schemas/Errors"
+
   /buildings/{buildingId}/zones/{zoneId}:
-      get:
-        tags: [Zones]
-        operationId: getZoneDetails
-        summary: Détails d'une zone
-        description: |
-          Retourne les détails d'une zone : nom, bâtiment liée.
-        parameters:
-          - $ref: "#/components/parameters/buildingId"
-          - $ref: "#/components/parameters/zoneId"
-        responses:
-          "200":
-            description: Zone trouvée
-            content:
-              application/json:
-                schema:
-                  $ref: "#/components/schemas/Zones"
-          "400":
-            description: Requête invalide — Le buildingId ou zoneID est mal formé ou le nom de la zone est manquant ou invalide
-            content:
-              application/json:
-                schema:
-                  $ref: "#/components/schemas/Errors"
-          "404":
-            description: Zone ou bâtiment inexistant
-            content:
-              application/json:
-                schema:
-                  $ref: "#/components/schemas/Errors"
-      patch:
-        tags: [Zones]
-        operationId: updateZone
-        summary: Mettre à jour les détails d'une zone
-        description: |
-          Met à jour les détails d'une zone existante : nom.
-        parameters:
-          - $ref: "#/components/parameters/buildingId"
-          - $ref: "#/components/parameters/zoneId"
-          - name: name
-            in: query
-            required: false
-            description: Nom de la zone
+    get:
+      tags: [Zones]
+      operationId: getZone
+      summary: Détails d'une zone
+      parameters:
+        - $ref: "#/components/parameters/buildingId"
+        - $ref: "#/components/parameters/zoneId"
+      responses:
+        "200":
+          description: Zone trouvée
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Zone"
+        "404":
+          description: Zone ou bâtiment inexistant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+    patch:
+      tags: [Zones]
+      operationId: updateZone
+      summary: Mettre à jour une zone
+      parameters:
+        - $ref: "#/components/parameters/buildingId"
+        - $ref: "#/components/parameters/zoneId"
+      requestBody:
+        required: true
+        content:
+          application/json:
             schema:
-              type: string
-              minLength: 1
-              maxLength: 100
-        responses:
-          "200":
-            description: Zone mise à jour avec succès
-            content:
-              application/json:
-                schema:
-                  $ref: "#/components/schemas/Zones"
-          "400":
-            description: Requête invalide — Le buildingId ou zoneId est mal formé ou aucun champ à mettre à jour fourni
-            content:
-              application/json:
-                schema:
-                  $ref: "#/components/schemas/Errors"
-          "404":
-            description: Zone ou bâtiment inexistant — Aucun bâtiment ou zone trouvé avec les identifiants spécifiés
-            content:
-              application/json:
-                schema:
-                  $ref: "#/components/schemas/Errors"
-      delete:
-        tags: [Zones]
-        operationId: deleteZone
-        summary: Supprimer une zone
-        description: |
-          Supprime une zone existante. Cette opération est irréversible et supprimera
-          également tous les capteurs, mesures et actionneurs associés à cette zone.
-        parameters:
-          - $ref: "#/components/parameters/buildingId"
-          - $ref: "#/components/parameters/zoneId"
-        responses:
-          "204":
-            description: Zone supprimée avec succès
-          "400":
-            description: Requête invalide — Le buildingId ou zoneId est mal formé
-            content:
-              application/json:
-                schema:
-                  $ref: "#/components/schemas/Errors"
-          "404":
-            description: Zone ou bâtiment inexistant — Aucun bâtiment ou zone trouvé avec les identifiants spécifiés
-            content:
-              application/json:
-                schema:
-                  $ref: "#/components/schemas/Errors"  
-
+              $ref: "#/components/schemas/ZoneRequest"
+      responses:
+        "200":
+          description: Zone mise à jour avec succès
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Zone"
+        "400":
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "404":
+          description: Zone ou bâtiment inexistant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+    delete:
+      tags: [Zones]
+      operationId: deleteZone
+      summary: Supprimer une zone
+      description: |
+        Supprime une zone. Opération irréversible — supprime également tous les
+        capteurs, mesures et actionneurs associés.
+      parameters:
+        - $ref: "#/components/parameters/buildingId"
+        - $ref: "#/components/parameters/zoneId"
+      responses:
+        "204":
+          description: Zone supprimée avec succès
+        "404":
+          description: Zone ou bâtiment inexistant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
 
   # ---------------------------------------------------------------------------
-  # Sensor
+  # Sensors
   # ---------------------------------------------------------------------------
+
   /buildings/{buildingId}/zones/{zoneId}/sensors:
     get:
       tags: [Sensors]
-      operationId: getSensorByZone
-      summary: Récupère les capteurs d'une zone
-      description:
-        Récupères les capteurs d'une zone.
+      operationId: listSensors
+      summary: Lister les capteurs d'une zone
       parameters:
         - $ref: "#/components/parameters/buildingId"
         - $ref: "#/components/parameters/zoneId"
@@ -464,13 +431,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: "#/components/schemas/Sensors"
-        "400":
-          description: Requête invalide — Le buildingId ou zoneId est mal formé
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Errors"
+                      $ref: "#/components/schemas/Sensor"
         "404":
           description: Zone ou bâtiment inexistant
           content:
@@ -481,45 +442,40 @@ paths:
       tags: [Sensors]
       operationId: createSensor
       summary: Créer un capteur dans une zone
-      description: |
-        Créer un capteur dans une zone existante.
       parameters:
         - $ref: "#/components/parameters/buildingId"
         - $ref: "#/components/parameters/zoneId"
-        - name: type
-          in: query
-          required: true
-          description: Type du capteur (température, humidité, ou les deux)
-          schema:
-            type: string
-            enum: [temperature, humidity, both]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SensorRequest"
       responses:
         "201":
           description: Capteur créé avec succès
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Sensors"
+                $ref: "#/components/schemas/Sensor"
         "400":
-          description: Requête invalide - Le buildingId ou zoneId est mal formé ou le type du capteur est manquant ou invalide
+          description: Données invalides
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Errors"
         "404":
-          description: Zone ou bâtiment inexistant - Aucun bâtiment ou zone trouvé avec les identifiants spécifiés
+          description: Zone ou bâtiment inexistant
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Errors"
-                
+
   /buildings/{buildingId}/zones/{zoneId}/sensors/{sensorId}:
     get:
       tags: [Sensors]
-      operationId: getSensorDetails
+      operationId: getSensor
       summary: Détails d'un capteur
-      description: |
-        Retourne les détails d'un capteur : type, zone liée, état de fonctionnement.
       parameters:
         - $ref: "#/components/parameters/buildingId"
         - $ref: "#/components/parameters/zoneId"
@@ -530,9 +486,42 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Sensors"
+                $ref: "#/components/schemas/Sensor"
+        "404":
+          description: Capteur, zone ou bâtiment inexistant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "503":
+          description: Capteur hors ligne
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+    patch:
+      tags: [Sensors]
+      operationId: updateSensor
+      summary: Mettre à jour le statut d'un capteur
+      parameters:
+        - $ref: "#/components/parameters/buildingId"
+        - $ref: "#/components/parameters/zoneId"
+        - $ref: "#/components/parameters/sensorId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SensorPatchRequest"
+      responses:
+        "200":
+          description: Capteur mis à jour avec succès
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sensor"
         "400":
-          description: Requête invalide — Le buildingId, zoneId ou sensorId est mal formé
+          description: Données invalides
           content:
             application/json:
               schema:
@@ -543,55 +532,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Errors"
-    patch:
-      tags: [Sensors]
-      operationId: updateSensor
-      summary: Mettre à jour les détails d'un capteur
-      description: |
-        Met à jour les détails d'un capteur existant : type, état de fonctionnement.
-      parameters:
-        - $ref: "#/components/parameters/buildingId"
-        - $ref: "#/components/parameters/zoneId"
-        - $ref: "#/components/parameters/sensorId"
-        - name: type
-          in: query
-          required: false
-          description: Type du capteur (température, humidité, ou les deux)
-          schema:
-            type: string
-            enum: [temperature, humidity, both]
-        - name: state
-          in: query
-          required: false
-          description: État de fonctionnement du capteur (actif, en panne, en maintenance)
-          schema:
-            type: string
-            enum: [active, faulty, maintenance]
-      responses:
-        "200":
-          description: Capteur mis à jour avec succès
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Sensors"
-        "400":
-          description: Requête invalide — Le buildingId, zoneId ou sensorId est mal formé ou aucun champ à mettre à jour fourni ou type ou state invalide
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Errors"
-        "404":
-          description: Capteur, zone ou bâtiment inexistant — Aucun bâtiment, zone ou capteur trouvé avec les identifiants spécifiés
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Errors"
     delete:
       tags: [Sensors]
       operationId: deleteSensor
       summary: Supprimer un capteur
-      description: |
-        Supprtime un capteur existant dans une zone d'un bâtiment.
       parameters:
         - $ref: "#/components/parameters/buildingId"
         - $ref: "#/components/parameters/zoneId"
@@ -599,70 +543,96 @@ paths:
       responses:
         "204":
           description: Capteur supprimé avec succès
-        "400":
-          description: Requête invalide — Le buildingId, zoneId ou sensorId est mal formé
+        "404":
+          description: Capteur, zone ou bâtiment inexistant
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Errors"
-        "404":
-          description: Capteur, zone ou bâtiment inexistant — Aucun bâtiment, zone ou capteur trouvé avec les identifiants spécifiés
-          content: 
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Errors"
+
   # ---------------------------------------------------------------------------
   # Measurements
   # ---------------------------------------------------------------------------
+
   /buildings/{buildingId}/zones/{zoneId}/sensors/{sensorId}/measurements:
+    get:
+      tags: [Measurements]
+      operationId: listMeasurements
+      summary: Lister les mesures d'un capteur
+      parameters:
+        - $ref: "#/components/parameters/buildingId"
+        - $ref: "#/components/parameters/zoneId"
+        - $ref: "#/components/parameters/sensorId"
+      responses:
+        "200":
+          description: Mesures récupérées avec succès
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Measurement"
+        "404":
+          description: Capteur, zone ou bâtiment inexistant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "503":
+          description: Capteur hors ligne — données indisponibles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
     post:
-      tags:
-        - Measurements
+      tags: [Measurements]
       operationId: createMeasurement
+      summary: Enregistrer une mesure
       description: Enregistre une mesure remontée par un capteur.
       parameters:
         - $ref: "#/components/parameters/buildingId"
         - $ref: "#/components/parameters/zoneId"
         - $ref: "#/components/parameters/sensorId"
-        - name: name
-          in: query
-          description: Nom de la mesure
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 100
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Measurements"
+              $ref: "#/components/schemas/MeasurementRequest"
       responses:
         "201":
-          description: Mesure créée avec succès
+          description: Mesure enregistrée avec succès
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Measurements"
+                $ref: "#/components/schemas/Measurement"
         "400":
           description: Données invalides
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Errors"
-                
+        "404":
+          description: Capteur, zone ou bâtiment inexistant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
 
   # ---------------------------------------------------------------------------
   # Actuators
   # ---------------------------------------------------------------------------
 
-  /building/{buildingId}/zones/{zoneId}/actuators:
+  /buildings/{buildingId}/zones/{zoneId}/actuators:
     get:
       tags: [Actuators]
-      operationId: getActuatorsByZone
-      summary: Récupère les actionneurs d'une zone
-      description:
-        Récupères les actionneurs d'une zone.
+      operationId: listActuators
+      summary: Lister les actionneurs d'une zone
       parameters:
         - $ref: "#/components/parameters/buildingId"
         - $ref: "#/components/parameters/zoneId"
@@ -679,10 +649,35 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: "#/components/schemas/Actuators"
-                    
+                      $ref: "#/components/schemas/Actuator"
+        "404":
+          description: Zone ou bâtiment inexistant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+    post:
+      tags: [Actuators]
+      operationId: createActuator
+      summary: Créer un actionneur dans une zone
+      parameters:
+        - $ref: "#/components/parameters/buildingId"
+        - $ref: "#/components/parameters/zoneId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActuatorRequest"
+      responses:
+        "201":
+          description: Actionneur créé avec succès
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Actuator"
         "400":
-          description: Requête invalide — Le buildingId ou zoneId est mal formé
+          description: Données invalides
           content:
             application/json:
               schema:
@@ -694,12 +689,107 @@ paths:
               schema:
                 $ref: "#/components/schemas/Errors"
 
-  
+  /buildings/{buildingId}/zones/{zoneId}/actuators/{actuatorId}:
+    get:
+      tags: [Actuators]
+      operationId: getActuator
+      summary: Détails d'un actionneur
+      parameters:
+        - $ref: "#/components/parameters/buildingId"
+        - $ref: "#/components/parameters/zoneId"
+        - $ref: "#/components/parameters/actuatorId"
+      responses:
+        "200":
+          description: Actionneur trouvé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Actuator"
+        "404":
+          description: Actionneur, zone ou bâtiment inexistant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+    delete:
+      tags: [Actuators]
+      operationId: deleteActuator
+      summary: Supprimer un actionneur
+      parameters:
+        - $ref: "#/components/parameters/buildingId"
+        - $ref: "#/components/parameters/zoneId"
+        - $ref: "#/components/parameters/actuatorId"
+      responses:
+        "204":
+          description: Actionneur supprimé avec succès
+        "404":
+          description: Actionneur, zone ou bâtiment inexistant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+
+  /buildings/{buildingId}/zones/{zoneId}/actuators/{actuatorId}/commands:
+    post:
+      tags: [Actuators]
+      operationId: sendCommand
+      summary: Envoyer une commande à un actionneur
+      description: |
+        Envoie une commande à un actionneur. Si l'actionneur est déjà dans l'état
+        demandé, retourne `status: "no_change"` (idempotence). Retourne 503 si
+        l'actionneur est en maintenance.
+      parameters:
+        - $ref: "#/components/parameters/buildingId"
+        - $ref: "#/components/parameters/zoneId"
+        - $ref: "#/components/parameters/actuatorId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommandRequest"
+      responses:
+        "200":
+          description: Commande exécutée avec succès
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommandResponse"
+        "400":
+          description: Action invalide
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "404":
+          description: Actionneur, zone ou bâtiment inexistant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "503":
+          description: Actionneur en maintenance — commande refusée
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+
 # =============================================================================
 # COMPONENTS
 # =============================================================================
 
 components:
+
+  # ---------------------------------------------------------------------------
+  # Security Schemes
+  # ---------------------------------------------------------------------------
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   # ---------------------------------------------------------------------------
   # Parameters
   # ---------------------------------------------------------------------------
@@ -712,7 +802,6 @@ components:
       description: Identifiant unique du bâtiment
       schema:
         type: string
-        format: uuid
     zoneId:
       name: zoneId
       in: path
@@ -720,7 +809,6 @@ components:
       description: Identifiant unique de la zone
       schema:
         type: string
-        format: uuid
     sensorId:
       name: sensorId
       in: path
@@ -728,7 +816,13 @@ components:
       description: Identifiant unique du capteur
       schema:
         type: string
-        format: uuid
+    actuatorId:
+      name: actuatorId
+      in: path
+      required: true
+      description: Identifiant unique de l'actionneur
+      schema:
+        type: string
     measurementId:
       name: measurementId
       in: path
@@ -736,115 +830,132 @@ components:
       description: Identifiant unique de la mesure
       schema:
         type: string
-        format: uuid
 
   # ---------------------------------------------------------------------------
   # Schemas
   # ---------------------------------------------------------------------------
 
   schemas:
-    Buildings:
-      type: object
-      description:  Un building (adresse, nom, géolocalisation).
-      required:
-        - id
-        - name
-        - addresse
-        - latitude
-        - longitude
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-          description: Nom du batiment
-        latitude:
-           $ref: "#/components/schemas/GeoPoints"
-        longitude:
-          $ref: "#/components/schemas/GeoPoints"    
 
-    Zones:
+    # Auth
+    LoginRequest:
       type: object
-      description:  Une zone (building, nom).
-      required:
-        - id
-        - buildingId
-        - name
+      required: [username, password]
       properties:
-        id:
+        username:
           type: string
-          format: uuid
-        buildingId:
+          example: admin
+        password:
           type: string
-          format: uuid
-          description: Id du building dans lequel se trouve la zone
-        name:
-          type: string
-          description: Nom de la zone
+          example: Admin1234!
 
-    Sensors:    
+    LoginResponse:
       type: object
-      description: Un dispositif matériel fixé dans une zone. 
-      required: 
-        - id
-        - type
-        - state
-        - zoneId
+      required: [token]
       properties:
-        id:
+        token:
           type: string
-          format: uuid
-        type:
+          description: Token JWT Bearer
+
+    CreateUserRequest:
+      type: object
+      required: [username, password, role]
+      properties:
+        username:
           type: string
-          description: température, humidité, ou les deux  
-        state:
-          type: string  
-          description: un statut opérationnel (actif, en panne, en maintenance)
+          example: Operateur1
+        password:
+          type: string
+          example: Operateur1234!
+        role:
+          type: string
+          enum: [admin, operator]
+          example: operator
         zoneId:
           type: string
-          format: uuid
-          description: Id de la zone dans lequel se trouve le capteur
+          description: Zone assignée à l'opérateur
+          example: z-001
 
-    Measurements:
+    User:
       type: object
-      required:
-        - id
-        - sensorId
-        - type
-        - value
-        - unit
-        - timestamp
+      required: [id, username, role]
       properties:
         id:
           type: string
-          example: "meas_98765"
-        sensorId:
+          example: u-001
+        username:
           type: string
-          example: "sensor_123"
-        type:
+        role:
           type: string
-          enum: [temperature, humidity]
-        value:
-          type: number
-          format: float
-          example: 27.4
-        unit:
+          enum: [admin, operator]
+        zoneId:
           type: string
-          example: "°C"
-        timestamp:
-          type: string
-          format: date-time
-          example: "2026-02-24T10:15:30Z"
-          
-    Actuators:
+
+    # Buildings
+    Building:
       type: object
-        
-    GeoPoints:
-      type: object
-      description: Coordonnées géographiques (WGS84)
-      required: [latitude, longitude]
+      required: [id, name, address, latitude, longitude]
       properties:
+        id:
+          type: string
+          example: b-001
+        name:
+          type: string
+          example: Siège Social ThermoSense
+        address:
+          type: string
+          example: 42 rue des Tests, 69000 Lyon
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          example: 45.7640
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          example: 4.8357
+
+    BuildingRequest:
+      type: object
+      required: [name, address, latitude, longitude]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: Nouveau Bâtiment
+        address:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: 42 rue des Tests, 69000 Lyon
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          example: 45.7640
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          example: 4.8357
+
+    BuildingPatchRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        address:
+          type: string
+          minLength: 1
+          maxLength: 200
         latitude:
           type: number
           format: double
@@ -855,15 +966,180 @@ components:
           format: double
           minimum: -180
           maximum: 180
-          
+
+    # Zones
+    Zone:
+      type: object
+      required: [id, buildingId, name]
+      properties:
+        id:
+          type: string
+          example: z-001
+        buildingId:
+          type: string
+          example: b-001
+        name:
+          type: string
+          example: Zone A — Open Space
+
+    ZoneRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: Zone D — Cafétéria
+
+    # Sensors
+    Sensor:
+      type: object
+      required: [id, type, status, zoneId]
+      properties:
+        id:
+          type: string
+          example: s-001
+        type:
+          type: string
+          enum: [temperature, humidity, both]
+        status:
+          type: string
+          enum: [active, faulty, maintenance]
+        label:
+          type: string
+          description: Libellé descriptif du capteur
+          example: Capteur mixte salle de conf
+        zoneId:
+          type: string
+          example: z-001
+
+    SensorRequest:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [temperature, humidity, both]
+          example: both
+        label:
+          type: string
+          example: Capteur mixte test
+
+    SensorPatchRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [active, faulty, maintenance]
+          example: maintenance
+
+    # Measurements
+    Measurement:
+      type: object
+      required: [id, sensorId, type, value, unit, timestamp]
+      properties:
+        id:
+          type: string
+          example: meas-001
+        sensorId:
+          type: string
+          example: s-001
+        type:
+          type: string
+          enum: [temperature, humidity]
+        value:
+          type: number
+          format: float
+          example: 23.4
+        unit:
+          type: string
+          example: "°C"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-02-24T10:15:30Z"
+
+    MeasurementRequest:
+      type: object
+      required: [type, value, unit]
+      properties:
+        type:
+          type: string
+          enum: [temperature, humidity]
+          example: temperature
+        value:
+          type: number
+          format: float
+          example: 23.4
+        unit:
+          type: string
+          example: "°C"
+
+    # Actuators
+    Actuator:
+      type: object
+      required: [id, type, status, zoneId]
+      properties:
+        id:
+          type: string
+          example: a-001
+        type:
+          type: string
+          enum: [heating, cooling, ventilation]
+        status:
+          type: string
+          enum: [on, off, auto, maintenance]
+        label:
+          type: string
+          description: Libellé descriptif de l'actionneur
+          example: Ventilation salle de conf
+        zoneId:
+          type: string
+          example: z-001
+
+    ActuatorRequest:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [heating, cooling, ventilation]
+          example: ventilation
+        label:
+          type: string
+          example: Ventilation test
+
+    CommandRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [on, off, auto]
+          example: on
+
+    CommandResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, no_change]
+          description: |
+            `ok` — commande appliquée.
+            `no_change` — l'actionneur était déjà dans l'état demandé (idempotence).
+          example: ok
+
+    # Errors
     Errors:
       type: object
-      description: Réponse d'erreur standardisée
       required: [code, message]
       properties:
         code:
           type: string
-          description: Code d'erreur machine-readable (ex "INVALID_COORDINATES")
+          description: Code d'erreur machine-readable
+          example: DEVICE_UNAVAILABLE
         message:
           type: string
           description: Message d'erreur lisible pour le développeur
