@@ -7,11 +7,15 @@ import actuatorsRouter from './routes/actuators';
 import authRouter from './routes/auth';
 import usersRouter from './routes/users';
 import { verifyJWT, jwtErrorHandler } from './middleware/auth';
+import { securityAuditContext } from './middleware/securityAudit';
+import { createRateLimiter } from './middleware/rateLimit';
 import { notFound, errorHandler } from './middleware/errorHandler';
 
 const app = express();
 
 app.use(express.json());
+app.use(securityAuditContext);
+app.use('/auth/login', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10 }));
 
 // Middleware JWT — exclut explicitement les routes publiques
 app.use(

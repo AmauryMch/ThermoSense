@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { User } from '../db/models';
+import { logSecurityEvent } from '../middleware/securityAudit';
 
 const router = Router();
 
@@ -26,13 +27,20 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
   const user = await User.findOne({ username });
 
   if (!user || !user.passwordHash) {
+    logSecurityEvent(req, res, 'auth_failed', 'invalid_credentials', {
+      actor: `user:${username}`,
+      level: 'warn',
+    });
     res.status(401).json({ error: 'invalid_credentials', message: 'Identifiants invalides' });
     return;
   }
 
   const valid = await bcrypt.compare(String(password), user.passwordHash);
   if (!valid) {
-    console.warn(`[auth] échec login sub=${user._id} role=${user.role}`);
+    logSecurityEvent(req, res, 'auth_failed', 'invalid_credentials', {
+      actor: `user:${username}`,
+      level: 'warn',
+    });
     res.status(401).json({ error: 'invalid_credentials', message: 'Identifiants invalides' });
     return;
   }
