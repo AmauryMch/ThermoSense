@@ -1,0 +1,44 @@
+meta {
+  name: A5 - Nominal Device POST Measurement sa zone (201)
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/buildings/b-001/zones/z-001/sensors/s-002/measurements
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "type": "temperature",
+    "value": 22.5,
+    "unit": "°C"
+  }
+}
+
+tests {
+  test("A5 - Nominal : Device poste une mesure dans sa zone", function() {
+    expect(res.status).to.equal(201);
+  });
+  
+  test("A5 - la mesure retournée a le bon sensorId", function() {
+    expect(res.body.sensorId).to.equal("s-001");
+  });
+}
+
+docs {
+  ## Preuve nominale — Scénario A5
+  
+  **Prérequis** : avoir lancé "Login (device zone A)" → token device_zone_a (zoneId=z-001).
+  
+  **Ce qu'on teste** : un device de z-001 poste une mesure sur s-001 (z-001, sa zone).
+  Autorisé par requireRole('admin','device') + requireZoneAccess (même zone).
+  
+  **Résultat attendu** : 201 Created avec la mesure créée.
+}

@@ -1,0 +1,25 @@
+meta {
+  name: Login (device)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "device_sensor_01",
+    "password": "Device1234!"
+  }
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.token) {
+    bru.setVar("token", res.body.token);
+    console.log("Token device sauvegardé");
+  }
+}

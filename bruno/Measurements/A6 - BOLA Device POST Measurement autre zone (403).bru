@@ -1,0 +1,50 @@
+meta {
+  name: A6 - BOLA Device POST Measurement autre zone (403)
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/buildings/b-001/zones/z-002/sensors/s-005/measurements
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "type": "temperature",
+    "value": 19.0,
+    "unit": "°C"
+  }
+}
+
+tests {
+  test("A6 - BOLA : Device bloqué sur zone étrangère", function() {
+    expect(res.status).to.equal(403);
+  });
+  
+  test("A6 - code d'erreur = object_not_owned", function() {
+    expect(res.body.code).to.equal("object_not_owned");
+  });
+}
+
+docs {
+  ## Preuve BOLA — Scénario A6
+  
+  **Prérequis** : avoir lancé "Login (device zone A)" → token device_zone_a (zoneId=z-001).
+  
+  **Ce qu'on teste** : un device de z-001 tente de poster une mesure sur s-005 (z-002, zone étrangère).
+  Bloqué par requireZoneAccess (claimed_zone=z-001, target_zone=z-002).
+  
+  **Résultat attendu** : 403 Forbidden
+  ```json
+  { "code": "object_not_owned", "message": "Accès refusé — cette zone ne vous appartient pas" }
+  ```
+  
+  **Log serveur attendu** :
+  [authz] BOLA access_denied sub=... role=device claimed_zone=z-001 target_zone=z-002 reason=object_not_owned
+}

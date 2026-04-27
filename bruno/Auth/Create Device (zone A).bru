@@ -1,0 +1,30 @@
+meta {
+  name: Create Device (zone A)
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/users
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "username": "device_zone_a",
+    "password": "Device1234!",
+    "role": "device",
+    "zoneId": "z-001"
+  }
+}
+
+docs {
+  Prérequis : être loggué en admin.
+  Crée un device IoT associé à z-001.
+  À faire une seule fois — renvoie 409 si le device existe déjà.
+}

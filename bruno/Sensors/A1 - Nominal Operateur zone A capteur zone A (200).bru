@@ -1,0 +1,36 @@
+meta {
+  name: A1 - Nominal Operateur zone A capteur zone A (200)
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/buildings/b-001/zones/z-001/sensors/s-001
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  ## Preuve nominale — Scénario A1
+
+  **Prérequis** : avoir lancé "Login (operator)" juste avant pour charger un token operator_zone_a (zoneId=z-001) dans {{token}}.
+
+  **Ce qu'on teste** : un opérateur de z-001 lit un capteur dans z-001 (sa propre zone).
+  Doit être autorisé par requireRole + requireZoneAccess.
+
+  **Résultat attendu** : 200 OK avec les détails du capteur s-001.
+}
+
+tests {
+  test("A1 - Nominal : Opérateur zone A accède à son capteur", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("A1 - le capteur retourné est bien s-001", function() {
+    expect(res.body._id).to.equal("s-001");
+  });
+}

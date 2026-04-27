@@ -1,0 +1,42 @@
+meta {
+  name: A2 - BOLA Operateur zone A capteur zone B (403)
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/buildings/b-001/zones/z-002/sensors/s-005
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  ## Preuve BOLA — Scénario A2
+
+  **Prérequis** : avoir lancé "Login (operator)" juste avant pour charger un token operator_zone_a (zoneId=z-001) dans {{token}}.
+
+  **Ce qu'on teste** : un opérateur de z-001 tente de lire un capteur dans z-002.
+  z-002 ne lui appartient pas → doit être bloqué par requireZoneAccess().
+
+  **Résultat attendu** : 403 Forbidden
+  ```json
+  { "code": "object_not_owned", "message": "Accès refusé — cette zone ne vous appartient pas" }
+  ```
+
+  **Log serveur attendu** :
+  [authz] BOLA access_denied sub=u-002 role=operator claimed_zone=z-001 target_zone=z-002 reason=object_not_owned
+}
+
+tests {
+  test("A2 - BOLA : Opérateur zone A bloqué sur zone B", function() {
+    expect(res.status).to.equal(403);
+  });
+
+  test("A2 - code d'erreur = object_not_owned", function() {
+    expect(res.body.code).to.equal("object_not_owned");
+  });
+}

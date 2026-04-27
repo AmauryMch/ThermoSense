@@ -1,0 +1,42 @@
+meta {
+  name: A3 - BFLA Device DELETE Sensor (403)
+  type: http
+  seq: 8
+}
+
+delete {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/sensors/{{sensorId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  ## Preuve BFLA — Scénario A3
+
+  **Prérequis** : avoir lancé "Login (device)" juste avant pour charger un token device dans {{token}}.
+
+  **Ce qu'on teste** : un Device (role=device) tente de supprimer un capteur.
+  DELETE est réservé aux rôles admin et operator → doit être bloqué par requireRole().
+
+  **Résultat attendu** : 403 Forbidden
+  ```json
+  { "code": "role_insufficient", "message": "Action réservée aux rôles : admin, operator" }
+  ```
+
+  **Log serveur attendu** :
+  [authz] BFLA access_denied sub=u-004 role=device endpoint="DELETE /..." reason=role_insufficient
+}
+
+tests {
+  test("A3 - BFLA : Device ne peut pas DELETE un capteur", function() {
+    expect(res.status).to.equal(403);
+  });
+
+  test("A3 - code d'erreur = role_insufficient", function() {
+    expect(res.body.code).to.equal("role_insufficient");
+  });
+}
