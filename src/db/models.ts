@@ -102,9 +102,23 @@ const UserSchema = new Schema<IUser>({
   zoneId:       { type: String, ref: 'Zone' },
 });
 
-export const Building    = mongoose.model<IBuilding>('Building', BuildingSchema);
-export const Zone        = mongoose.model<IZone>('Zone', ZoneSchema);
-export const Sensor      = mongoose.model<ISensor>('Sensor', SensorSchema);
-export const Measurement = mongoose.model<IMeasurement>('Measurement', MeasurementSchema);
-export const Actuator    = mongoose.model<IActuator>('Actuator', ActuatorSchema);
-export const User        = mongoose.model<IUser>('User', UserSchema);
+// ── IdempotencyRecord ─────────────────────────────────────────────────────────
+export interface IIdempotencyRecord extends Document<string> {
+  _id: string;
+  response: object;
+  createdAt: Date;
+}
+
+const IdempotencyRecordSchema = new Schema<IIdempotencyRecord>({
+  _id:      { type: String, required: true },
+  response: { type: Schema.Types.Mixed, required: true },
+  createdAt: { type: Date, default: Date.now, expires: 86400 },
+});
+
+export const Building           = mongoose.model<IBuilding>('Building', BuildingSchema);
+export const Zone               = mongoose.model<IZone>('Zone', ZoneSchema);
+export const Sensor             = mongoose.model<ISensor>('Sensor', SensorSchema);
+export const Measurement        = mongoose.model<IMeasurement>('Measurement', MeasurementSchema);
+export const Actuator           = mongoose.model<IActuator>('Actuator', ActuatorSchema);
+export const User               = mongoose.model<IUser>('User', UserSchema);
+export const IdempotencyRecord  = mongoose.model<IIdempotencyRecord>('IdempotencyRecord', IdempotencyRecordSchema);

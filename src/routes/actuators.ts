@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { Zone, Actuator } from '../db/models';
+import { Zone, Actuator, IdempotencyRecord } from '../db/models';
 import { requireRole, requireZoneAccess } from '../middleware/auth';
 
 const router = Router({ mergeParams: true });
@@ -68,19 +68,34 @@ router.post('/:actuatorId/commands', requireRole('admin', 'operator'), requireZo
     return;
   }
 
+  const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
+  if (idempotencyKey) {
+    const existing = await IdempotencyRecord.findById(idempotencyKey);
+    if (existing) {
+      res.json(existing.response); return;
+    }
+  }
+
   const { action } = req.body;
   if (!action || !VALID_ACTIONS.includes(action)) {
     res.status(400).json({ error: 'validation_error', message: `action doit être parmi : ${VALID_ACTIONS.join(', ')}` }); return;
   }
 
   const previousStatus = actuator.status;
+  let responseBody: object;
+
   if (previousStatus === action) {
-    res.json({ command_id: uuidv4(), actuator_id: actuatorId, action, status: 'no_change', previous_state: previousStatus, current_state: action, executed_at: new Date().toISOString() });
-    return;
+    responseBody = { command_id: uuidv4(), actuator_id: actuatorId, action, status: 'no_change', previous_state: previousStatus, current_state: action, executed_at: new Date().toISOString() };
+  } else {
+    await Actuator.findByIdAndUpdate(actuatorId, { status: action });
+    responseBody = { command_id: uuidv4(), actuator_id: actuatorId, action, status: 'executed', previous_state: previousStatus, current_state: action, executed_at: new Date().toISOString() };
   }
 
-  await Actuator.findByIdAndUpdate(actuatorId, { status: action });
-  res.json({ command_id: uuidv4(), actuator_id: actuatorId, action, status: 'executed', previous_state: previousStatus, current_state: action, executed_at: new Date().toISOString() });
+  if (idempotencyKey) {
+    await IdempotencyRecord.create({ _id: idempotencyKey, response: responseBody });
+  }
+
+  res.json(responseBody);
 });
 
 // PATCH /buildings/:buildingId/zones/:zoneId/actuators/:actuatorId
