@@ -1,0 +1,48 @@
+meta {
+  name: 09 - Envoyer Commande Actionneur
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/actuators/{{actuatorId}}/commands
+  body: json
+  auth: bearer
+}
+
+body:json {
+  {
+    "action": "on"
+  }
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("Commande envoyée — 200", function() {
+    expect(res.status).to.equal(200);
+  });
+  test("Action confirmée dans la réponse", function() {
+    expect(res.body.action).to.equal("on");
+  });
+}
+
+docs {
+  ## Flux nominal — Étape 9 : L'opérateur déclenche un actionneur
+
+  Depuis l'app mobile, l'opérateur envoie une commande "on" à l'actionneur a-001
+  (ex : ouverture d'une VMC, allumage du chauffage).
+
+  **Prérequis** : token opérateur en `{{token}}` (étape 07).
+  **RBAC** : `requireRole("admin", "operator")` — le device NE PEUT PAS envoyer de commandes.
+
+  **Résultat attendu** : 200 OK
+  ```json
+  { "actuatorId": "a-001", "action": "on", "status": "ok", "executedAt": "..." }
+  ```
+
+  🎯 Fin du flux nominal : mobile → API → IoT → mesures → actionneurs.
+  Passez maintenant aux scénarios d'incident (étapes 10-15).
+}

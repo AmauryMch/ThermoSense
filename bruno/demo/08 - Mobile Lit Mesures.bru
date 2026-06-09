@@ -1,0 +1,44 @@
+meta {
+  name: 08 - Mobile Lit Mesures
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/sensors/{{sensorId}}/measurements
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("Mesures récupérées — 200", function() {
+    expect(res.status).to.equal(200);
+  });
+  test("Liste non vide (inclut la mesure de l'étape 06)", function() {
+    expect(res.body).to.be.an("array");
+    expect(res.body.length).to.be.above(0);
+  });
+  test("Dernière mesure = température envoyée par le device", function() {
+    var last = res.body[res.body.length - 1];
+    expect(last.type).to.equal("temperature");
+    expect(last.sensorId).to.equal("s-001");
+  });
+}
+
+docs {
+  ## Flux nominal — Étape 8 : L'app mobile lit les mesures en temps réel
+
+  L'opérateur consulte depuis son mobile les mesures du capteur s-001.
+  La mesure envoyée à l'étape 06 doit apparaître dans la liste.
+
+  **Prérequis** : token opérateur z-001 en `{{token}}` (étape 07).
+
+  **Résultat attendu** : 200 OK — tableau de mesures, la dernière étant
+  la température 23.4 °C envoyée par le device à l'étape 06.
+
+  Ceci boucle le flux complet : mobile → API ← IoT.
+}

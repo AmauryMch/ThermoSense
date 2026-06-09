@@ -1,0 +1,38 @@
+meta {
+  name: 04 - Consulter Capteurs Zone A
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/sensors
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("Liste capteurs — 200", function() {
+    expect(res.status).to.equal(200);
+  });
+  test("Au moins un capteur dans z-001", function() {
+    expect(res.body).to.be.an("array");
+    expect(res.body.length).to.be.above(0);
+  });
+}
+
+docs {
+  ## Flux nominal — Étape 4 : L'app mobile consulte les capteurs de la zone A
+
+  L'opérateur de z-001 liste les capteurs de sa propre zone.
+
+  **Prérequis** : token opérateur z-001 en `{{token}}` (étape 02).
+
+  **BOLA** : `requireZoneAccess` vérifie que le `zoneId` du token correspond à z-001.
+  Un opérateur d'une autre zone serait bloqué avec 403.
+
+  **Résultat attendu** : 200 OK — liste des capteurs actifs, offline et maintenance de z-001.
+}

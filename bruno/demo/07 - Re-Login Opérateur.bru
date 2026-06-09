@@ -1,0 +1,43 @@
+meta {
+  name: 07 - Re-Login Opérateur
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "operator_zone_a",
+    "password": "Operator1234!"
+  }
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.token) {
+    bru.setVar("token", res.body.token);
+    console.log("Token opérateur restauré après le login device de l'étape 05");
+  }
+}
+
+tests {
+  test("Re-login opérateur — 200", function() {
+    expect(res.status).to.equal(200);
+  });
+}
+
+docs {
+  ## Flux nominal — Étape 7 : Restauration du token opérateur
+
+  L'étape 05 a remplacé `{{token}}` par un token device.
+  Cette étape re-authentifie l'opérateur pour permettre la lecture
+  des mesures (GET) à l'étape 08.
+
+  Ce changement de contexte illustre la **séparation des rôles** :
+  le device (write-only) et l'opérateur (read/write) ont des tokens distincts
+  avec des permissions différentes.
+}

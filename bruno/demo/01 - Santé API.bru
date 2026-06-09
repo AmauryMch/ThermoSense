@@ -1,0 +1,37 @@
+meta {
+  name: 01 - Santé API
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/health
+  body: none
+  auth: none
+}
+
+tests {
+  test("API accessible — 200 OK", function() {
+    expect(res.status).to.equal(200);
+  });
+  test("status: ok", function() {
+    expect(res.body.status).to.equal("ok");
+  });
+  test("timestamp présent", function() {
+    expect(res.body.timestamp).to.be.a("string");
+  });
+}
+
+docs {
+  ## Flux nominal — Étape 1 : Santé de l'API
+
+  Premier appel avant toute démo : vérifier que le serveur Express est démarré
+  et que MongoDB est joignable.
+
+  **Pas d'authentification requise** (endpoint public).
+
+  **Résultat attendu** :
+  ```json
+  { "status": "ok", "timestamp": "2026-06-09T..." }
+  ```
+}

@@ -1,0 +1,49 @@
+meta {
+  name: 05 - Login Device IoT
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "device_zone_a",
+    "password": "Device1234!"
+  }
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.token) {
+    bru.setVar("token", res.body.token);
+    console.log("Token device_zone_a sauvegardé — role=device, zoneId=z-001");
+  }
+}
+
+tests {
+  test("Authentification device — 200", function() {
+    expect(res.status).to.equal(200);
+  });
+  test("Token JWT présent", function() {
+    expect(res.body.token).to.be.a("string");
+  });
+}
+
+docs {
+  ## Flux nominal — Étape 5 : Authentification du device IoT
+
+  Le capteur physique (ou le firmware embarqué) s'authentifie auprès de l'API
+  pour obtenir un token de courte durée.
+
+  **Rôle** : `device` — scope `thermosense:write`, restreint à z-001.
+  Ce rôle a été séparé du rôle `operator` (Sprint S2-S3) pour limiter l'accès
+  au strict nécessaire : POST de mesures uniquement.
+
+  ⚠ Ce login **écrase `{{token}}`** avec le token device.
+  Les étapes 06 (POST mesure) utilisent ce token device.
+  L'étape 07 ré-authentifie l'opérateur pour reprendre les lectures.
+}

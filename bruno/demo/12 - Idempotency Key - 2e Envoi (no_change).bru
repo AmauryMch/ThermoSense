@@ -1,0 +1,49 @@
+meta {
+  name: 12 - Idempotency Key - 2e Envoi (no_change)
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/actuators/{{actuatorId}}/commands
+  body: json
+  auth: bearer
+}
+
+headers {
+  Idempotency-Key: {{idempotencyKey}}
+}
+
+body:json {
+  {
+    "action": "on"
+  }
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("2e envoi — 200 OK (pas de doublon)", function() {
+    expect(res.status).to.equal(200);
+  });
+  test("status = no_change — commande NON ré-exécutée", function() {
+    expect(res.body.status).to.equal("no_change");
+  });
+}
+
+docs {
+  ## Scénario d'incident — Idempotency Key : 2e envoi (no_change)
+
+  Même requête que l'étape 11, même `Idempotency-Key` ({{idempotencyKey}}).
+  Le serveur reconnaît l'UUID et retourne `{status: "no_change"}` sans ré-exécuter.
+  L'actionneur n'est activé qu'une seule fois — 0 doublon d'exécution.
+
+  **Résultat attendu** : 200 OK
+  ```json
+  { "status": "no_change" }
+  ```
+
+  Pour re-tester un 1er envoi propre : changer `idempotencyKey` dans local.bru.
+}

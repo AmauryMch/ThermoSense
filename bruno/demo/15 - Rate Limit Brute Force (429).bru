@@ -1,0 +1,54 @@
+meta {
+  name: 15 - Rate Limit Brute Force (429)
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "admin",
+    "password": "mauvais_mot_de_passe_brute_force"
+  }
+}
+
+tests {
+  test("Brute force bloqué — 429 Too Many Requests", function() {
+    expect(res.status).to.equal(429);
+  });
+  test("Header Retry-After présent", function() {
+    expect(res.headers["retry-after"]).to.exist;
+  });
+}
+
+docs {
+  ## Scénario d'incident — Rate Limit : brute force login bloqué
+
+  **Comment déclencher le 429** :
+  Exécuter ce fichier **11 fois en moins de 15 minutes** depuis la même IP.
+  Le rate limiter bloque à partir de la 11e tentative.
+
+  **Limite configurée** : 10 requêtes / 15 minutes par IP sur `POST /auth/login`
+  (voir `src/middleware/rateLimit.ts`).
+
+  **Comportement attendu** :
+  - Tentatives 1-10 : 401 Unauthorized (mauvais mot de passe)
+  - Tentative 11+ : **429 Too Many Requests** + `Retry-After: <secondes>`
+  - L'IP est débloquée automatiquement après 15 minutes (fenêtre glissante)
+
+  **Résultat attendu** (à la 11e exécution) : 429 Too Many Requests
+  ```json
+  { "code": "too_many_requests", "message": "Trop de tentatives, réessayez dans X secondes" }
+  ```
+
+  **Log serveur** : `[security] rate_limit_exceeded ip=127.0.0.1 endpoint=POST /auth/login`
+
+  **Limite connue** (mémo — Risque 3) : Le rate limiter utilise un `Map` en mémoire.
+  Il se réinitialise au redémarrage du serveur — pas adapté à un déploiement multi-instance
+  sans Redis ou store partagé.
+}

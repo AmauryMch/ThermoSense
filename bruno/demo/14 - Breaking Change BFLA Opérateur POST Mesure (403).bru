@@ -1,0 +1,59 @@
+meta {
+  name: 14 - Breaking Change BFLA Opérateur POST Mesure (403)
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/sensors/{{sensorId}}/measurements
+  body: json
+  auth: bearer
+}
+
+body:json {
+  {
+    "type": "temperature",
+    "value": 21.0,
+    "unit": "°C"
+  }
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("BFLA : opérateur bloqué sur POST mesure — 403", function() {
+    expect(res.status).to.equal(403);
+  });
+  test("Code d'erreur = role_insufficient", function() {
+    expect(res.body.code).to.equal("role_insufficient");
+  });
+}
+
+docs {
+  ## Scénario d'incident — Breaking Change : BFLA opérateur → POST mesure
+
+  **Prérequis** : token **opérateur** en `{{token}}` (étapes 02 ou 07).
+
+  **Contexte — breaking change** : Dans la v1 de ThermoSense, le rôle `operator`
+  pouvait poster des mesures manuellement. Le Sprint S2-S3 a introduit le rôle
+  `device` dédié aux IoT. POST /measurements est désormais réservé aux rôles
+  `admin` et `device` uniquement.
+
+  Un client mobile (ou script) qui utilise encore un token opérateur pour poster
+  des mesures reçoit maintenant une 403 — c'est le breaking change.
+
+  **Comportement attendu** : L'API rejette la requête car `operator` n'est plus
+  dans la liste des rôles autorisés pour cette action.
+
+  **Résultat attendu** : 403 Forbidden
+  ```json
+  { "code": "role_insufficient", "message": "Action réservée aux rôles : admin, device" }
+  ```
+
+  **Log serveur** : `[authz] BFLA access_denied sub=u-002 role=operator endpoint="POST /measurements" reason=role_insufficient`
+
+  **Résolution pour le client** : se ré-authentifier en tant que `device` (étape 05)
+  pour obtenir le rôle approprié.
+}

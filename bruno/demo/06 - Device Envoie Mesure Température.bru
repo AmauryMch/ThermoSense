@@ -1,0 +1,54 @@
+meta {
+  name: 06 - Device Envoie Mesure Température
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/sensors/{{sensorId}}/measurements
+  body: json
+  auth: bearer
+}
+
+body:json {
+  {
+    "type": "temperature",
+    "value": 23.4,
+    "unit": "°C"
+  }
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("Mesure enregistrée — 201 Created", function() {
+    expect(res.status).to.equal(201);
+  });
+  test("Mesure retournée avec le bon sensorId", function() {
+    expect(res.body.sensorId).to.equal("s-001");
+  });
+  test("Valeur correcte dans la réponse", function() {
+    expect(res.body.value).to.equal(23.4);
+  });
+}
+
+docs {
+  ## Flux nominal — Étape 6 : Le device IoT envoie une mesure de température
+
+  Simule la remontée de données d'un capteur physique vers l'API ThermoSense.
+  C'est le cœur du flux IoT : requête mobile → API → enregistrement en base.
+
+  **Prérequis** : token device z-001 en `{{token}}` (étape 05).
+
+  **RBAC** : `requireRole("admin", "device")` — l'opérateur NE PEUT PAS poster
+  de mesures (voir scénario 14 — Breaking Change BFLA).
+
+  **BOLA** : `requireZoneAccess` vérifie que le device poste sur sa propre zone.
+
+  **Résultat attendu** : 201 Created
+  ```json
+  { "sensorId": "s-001", "type": "temperature", "value": 23.4, "unit": "°C", "timestamp": "..." }
+  ```
+}

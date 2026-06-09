@@ -1,0 +1,52 @@
+meta {
+  name: 13 - Capteur Hors Ligne (503)
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/sensors/{{sensorOfflineId}}/measurements
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("Capteur offline — 503 Service Unavailable", function() {
+    expect(res.status).to.equal(503);
+  });
+  test("Code d'erreur = device_unavailable", function() {
+    expect(res.body.code).to.equal("device_unavailable");
+  });
+  test("Header Retry-After présent", function() {
+    expect(res.headers["retry-after"]).to.equal("60");
+  });
+}
+
+docs {
+  ## Scénario d'incident — Capteur hors ligne
+
+  **Contexte** : Le capteur physique s-004 ({{sensorOfflineId}}) a perdu la connexion
+  (panne réseau, batterie déchargée, coupure d'alimentation).
+  Son status en base est "offline".
+
+  L'opérateur ou l'app mobile tente de lire ses mesures → l'API retourne 503.
+
+  **Comportement attendu** :
+  - HTTP 503 avec `{"code": "device_unavailable", "message": "Capteur hors ligne"}`
+  - Header `Retry-After: 60` indique au client de réessayer dans 60 secondes
+  - Le client affiche une alerte "Capteur indisponible" plutôt que de planter
+
+  **Résultat attendu** : 503 Service Unavailable
+  ```json
+  { "code": "device_unavailable", "message": "Capteur hors ligne ou en maintenance" }
+  ```
+
+  **Log serveur** : `[iot] sensor s-004 status=offline — returning 503`
+
+  Pour changer l'état du capteur : PATCH /sensors/s-004 avec `{"status": "active"}`
+  (voir dossier Sensors → Update Sensor Status).
+}

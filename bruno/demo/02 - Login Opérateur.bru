@@ -1,0 +1,51 @@
+meta {
+  name: 02 - Login Opérateur
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "operator_zone_a",
+    "password": "Operator1234!"
+  }
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.token) {
+    bru.setVar("token", res.body.token);
+    console.log("Token opérateur sauvegardé — expire dans 15 min (zoneId=z-001)");
+  }
+}
+
+tests {
+  test("Login réussi — 200", function() {
+    expect(res.status).to.equal(200);
+  });
+  test("Token JWT présent (3 parties)", function() {
+    expect(res.body.token).to.be.a("string");
+    expect(res.body.token.split(".").length).to.equal(3);
+  });
+}
+
+docs {
+  ## Flux nominal — Étape 2 : Authentification côté mobile (opérateur)
+  
+  Simule la connexion d'un opérateur depuis l'application mobile ThermoSense.
+  
+  **Rôle** : `operator` — scope `thermosense:read thermosense:write`, restreint à z-001.
+  **Expiration** : 15 minutes (voir Decision 1 du mémo décisionnel).
+  
+  Le token JWT est sauvegardé dans `{{token}}` pour les étapes suivantes.
+  
+  **Résultat attendu** : 200 OK
+  ```json
+  { "token": "eyJhbGci..." }
+  ```
+}

@@ -1,0 +1,48 @@
+meta {
+  name: 11 - Idempotency Key - 1er Envoi
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/actuators/{{actuatorId}}/commands
+  body: json
+  auth: bearer
+}
+
+headers {
+  Idempotency-Key: {{idempotencyKey}}
+}
+
+body:json {
+  {
+    "action": "on"
+  }
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("1er envoi — 200 OK, commande exécutée", function() {
+    expect(res.status).to.equal(200);
+  });
+  test("status n'est PAS no_change (exécution réelle)", function() {
+    expect(res.body.status).to.not.equal("no_change");
+  });
+}
+
+docs {
+  ## Scénario d'incident — Idempotency Key : 1er envoi
+
+  Le client envoie une commande "on" avec un `Idempotency-Key` fixé dans `{{idempotencyKey}}`.
+  Le serveur exécute la commande et mémorise l'UUID.
+
+  Ce fichier simule le **1er envoi** : la commande est exécutée normalement.
+
+  ⚠ Ne pas changer `idempotencyKey` dans local.bru avant d'avoir lancé l'étape 12.
+  Enchaîner immédiatement avec l'étape 12 pour observer le comportement idempotent.
+
+  **Résultat attendu** : 200 OK — commande "on" exécutée, status ≠ "no_change".
+}

@@ -1,0 +1,59 @@
+meta {
+  name: 10 - Token Expiré (401)
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/buildings/{{buildingId}}/zones/{{zoneId}}/sensors
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:pre-request {
+  // Sauvegarde le vrai token puis injecte un token expiré (exp=1 = 01/01/1970)
+  // eyJleHAiOjF9 = base64url({"exp":1})
+  bru.setVar("_tokenBackup", bru.getVar("token"));
+  bru.setVar("token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1LTAwMiIsInJvbGUiOiJvcGVyYXRvciIsInNjb3BlIjoidGhlcm1vc2Vuc2U6cmVhZCIsInpvbmVJZCI6InotMDAxIiwiYXVkIjoidGhlcm1vc2Vuc2UtYXBpIiwiaXNzIjoidGhlcm1vc2Vuc2UiLCJleHAiOjE2OTk5MDIwMDB9.yj9dOVr_YQMb32t6DhS-2v4HJIhUIulmPd-OuOBTACQ");
+}
+
+script:post-response {
+  // Restaure le vrai token pour que les étapes 11-14 fonctionnent
+  bru.setVar("token", bru.getVar("_tokenBackup"));
+}
+
+tests {
+  test("Token expiré — 401 Unauthorized", function() {
+    expect(res.status).to.equal(401);
+  });
+  test("Réponse indique l'erreur d'authentification", function() {
+    expect(res.body).to.have.property("message");
+  });
+}
+
+docs {
+  ## Scénario d'incident — Token expiré
+
+  **Contexte** : L'app mobile est restée en arrière-plan plus de 15 minutes.
+  Le token JWT a expiré (exp dépassé). La prochaine requête retourne 401.
+
+  Le pre-request script injecte un token avec exp=1 (01/01/1970 — expiré depuis 1970)
+  puis restaure le vrai token après la réponse pour ne pas bloquer les étapes suivantes.
+
+  **Comportement attendu côté client** :
+  1. Recevoir 401
+  2. Rediriger vers l'écran de connexion
+  3. Re-authentifier → nouveau token valide 15 min
+
+  **Résultat attendu** : 401 Unauthorized
+  ```json
+  { "code": "unauthorized", "message": "jwt expired" }
+  ```
+
+  **Mitigation** : Durée d'expiration fixée à 15 min (Decision 1 mémo) pour limiter
+  la fenêtre d'exploitation en cas de vol de token.
+}
